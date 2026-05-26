@@ -24,6 +24,12 @@ struct CameraPreviewView: View {
     /// 是否处于静态帧模式
     let isFrameFrozen: Bool
 
+    /// 当前手机镜头焦段信息
+    let currentLensInfo: CameraLensInfo
+
+    /// 当前选择的标准定焦焦段
+    let selectedFocalLength: StandardFocalLength
+
     /// 点击预览的回调
     let onTap: (CGPoint) -> Void
 
@@ -36,39 +42,51 @@ struct CameraPreviewView: View {
     /// 主体测光回调
     let onSubjectMetering: () -> Void
 
+    /// 标准定焦选择回调
+    let onFocalLengthSelected: (StandardFocalLength) -> Void
+
     // MARK: - Body
 
     var body: some View {
         GeometryReader { geometry in
             let contentSize = CameraPreviewLayout.contentSize(for: geometry.size)
+            let previewScale = FocalLengthPreviewGeometry.previewScale(
+                currentEquivalentFocalLength: currentLensInfo.equivalentFocalLength,
+                selectedFocalLength: selectedFocalLength
+            )
 
             ZStack {
                 // 相机预览层或冻结帧
-                previewContent(in: contentSize)
+                previewContent(in: contentSize, previewScale: previewScale)
+                    .contentShape(Rectangle())
+                    .onTapGesture { location in
+                        let normalizedPoint = CameraPreviewLayout.normalizedPoint(
+                            from: location,
+                            in: contentSize
+                        )
+                        onTap(normalizedPoint)
+                    }
 
                 // 测光点标记覆盖层
                 meteringPointsOverlay(in: contentSize)
 
-                // 静态帧控制
+                // 焦段选择控制
+                focalLengthControls
+                    .zIndex(20)
+
+                // 静态帧控制始终置顶，避免冻结帧后无法恢复
                 staticFrameControls
+                    .zIndex(30)
             }
             .frame(width: contentSize.width, height: contentSize.height)
             .clipped()
-            .contentShape(Rectangle())
-            .onTapGesture { location in
-                let normalizedPoint = CameraPreviewLayout.normalizedPoint(
-                    from: location,
-                    in: contentSize
-                )
-                onTap(normalizedPoint)
-            }
         }
     }
 
     // MARK: - Subviews
 
     /// 预览内容
-    private func previewContent(in contentSize: CGSize) -> some View {
+    private func previewContent(in contentSize: CGSize, previewScale: CGFloat) -> some View {
         ZStack {
             CameraPreviewLayer(session: session)
                 .opacity(isFrameFrozen ? 0 : 1)
@@ -82,13 +100,13 @@ struct CameraPreviewView: View {
             }
         }
         .frame(width: contentSize.width, height: contentSize.height)
+        .scaleEffect(previewScale, anchor: .center)
     }
 
     /// 静态帧控制按钮
     private var staticFrameControls: some View {
         VStack {
-            Spacer()
-
+            Spacer(minLength: 0)
             HStack(spacing: 12) {
                 Button(action: onFreezeToggle) {
                     Image(systemName: isFrameFrozen ? "play.fill" : "pause.fill")
@@ -127,6 +145,68 @@ struct CameraPreviewView: View {
             }
             .padding(.bottom, 14)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .allowsHitTesting(true)
+    }
+
+    /// 焦段显示和标准定焦选择
+    private var focalLengthControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(currentLensInfo.displayName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .frame(height: 28)
+                    .background(
+                        Capsule()
+                            .fill(Color.black.opacity(0.68))
+                    )
+
+                if FocalLengthPreviewGeometry.isWiderThanCurrentLens(
+                    currentEquivalentFocalLength: currentLensInfo.equivalentFocalLength,
+                    selectedFocalLength: selectedFocalLength
+                ) {
+                    Text("无法完整模拟")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.85))
+                        .padding(.horizontal, 8)
+                        .frame(height: 26)
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.56))
+                        )
+                }
+            }
+
+            HStack(spacing: 6) {
+                ForEach(StandardFocalLength.allCases) { focalLength in
+                    Button {
+                        onFocalLengthSelected(focalLength)
+                    } label: {
+                        Text(focalLength.label)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(selectedFocalLength == focalLength ? .black : .white)
+                            .frame(width: 38, height: 28)
+                            .background(
+                                Capsule()
+                                    .fill(selectedFocalLength == focalLength ? Color.white : Color.black.opacity(0.62))
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.top, 12)
+        .padding(.leading, 12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .allowsHitTesting(true)
     }
 
     /// 测光点覆盖层
@@ -206,6 +286,8 @@ private class VideoPreviewView: UIView {
         selectedPointId: points.first?.id,
         frozenFrameImage: nil,
         isFrameFrozen: false,
+        currentLensInfo: CameraLensInfo(equivalentFocalLength: 24, displayName: "手机 24mm"),
+        selectedFocalLength: .mm35,
         onTap: { location in
             print("Tapped at: \(location)")
             let colorIndex = points.count % MeteringPoint.colors.count
@@ -223,6 +305,7 @@ private class VideoPreviewView: UIView {
             print("Selected point: \(point.id)")
         },
         onFreezeToggle: {},
-        onSubjectMetering: {}
+        onSubjectMetering: {},
+        onFocalLengthSelected: { _ in }
     )
 }

@@ -16,7 +16,7 @@
 | 7 | [集成测试和Bug修复](集成测试和Bug修复.md) | [ ] 未完成 | 4h |
 | 10 | [光圈快门联动控制](exposure-coupled-controls.md) | [x] 已完成 | 4h |
 | 11 | [静态帧主体测光](static-frame-subject-metering.md) | [x] 已完成 | 4h |
-| 13 | [镜头焦段显示与取景适配](lens-focal-length-display.md) | [ ] 未完成 | 3h |
+| 13 | [镜头焦段显示与取景适配](lens-focal-length-display.md) | [x] 已完成 | 3h |
 
 **总预估工作量：41小时**
 

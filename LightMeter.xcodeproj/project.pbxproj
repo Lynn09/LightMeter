@@ -23,6 +23,7 @@
 		8D8EAB2611934F49A1110002 /* StaticFramePreviewGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2511934F49A1110002 /* StaticFramePreviewGeometry.swift */; };
 		8D8EAB2811934F49A1110003 /* MeteringPointLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2711934F49A1110003 /* MeteringPointLayout.swift */; };
 		8D8EAB2A11934F49A1110004 /* CameraPreviewLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2911934F49A1110004 /* CameraPreviewLayout.swift */; };
+		8D8EAB2C11934F49A1110005 /* FocalLengthPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2B11934F49A1110005 /* FocalLengthPreview.swift */; };
 		C8F505A44B5D303E05ADB9C4 /* ExposureCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886C6492BD1983B14D2DEC87 /* ExposureCalculator.swift */; };
 		CA7EAEDD44CD59CAF100EA87 /* FilmSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 160944A873C68C8AB79474C6 /* FilmSelectorView.swift */; };
 		E2825F6D9C8BAFD56F68BEDD /* LightMeterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4BAB4CD2C382B32711F111 /* LightMeterApp.swift */; };
@@ -46,6 +47,7 @@
 		8D8EAB2511934F49A1110002 /* StaticFramePreviewGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaticFramePreviewGeometry.swift; sourceTree = "<group>"; };
 		8D8EAB2711934F49A1110003 /* MeteringPointLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeteringPointLayout.swift; sourceTree = "<group>"; };
 		8D8EAB2911934F49A1110004 /* CameraPreviewLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewLayout.swift; sourceTree = "<group>"; };
+		8D8EAB2B11934F49A1110005 /* FocalLengthPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocalLengthPreview.swift; sourceTree = "<group>"; };
 		AA2590533435D44A142C4D10 /* TopToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopToolbar.swift; sourceTree = "<group>"; };
 		B03871FEC36F6A79637C221E /* FilmPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmPreset.swift; sourceTree = "<group>"; };
 		B3A302588E3CB176611BDEB9 /* DeviceConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConfiguration.swift; sourceTree = "<group>"; };
@@ -137,6 +139,7 @@
 				8D8EAB2911934F49A1110004 /* CameraPreviewLayout.swift */,
 				886C6492BD1983B14D2DEC87 /* ExposureCalculator.swift */,
 				B03871FEC36F6A79637C221E /* FilmPreset.swift */,
+				8D8EAB2B11934F49A1110005 /* FocalLengthPreview.swift */,
 				8D8EAB2711934F49A1110003 /* MeteringPointLayout.swift */,
 				D44659025A2122CFFF06FC7C /* MeteringPoint.swift */,
 				8D8EAB2511934F49A1110002 /* StaticFramePreviewGeometry.swift */,
@@ -210,6 +213,7 @@
 				C8F505A44B5D303E05ADB9C4 /* ExposureCalculator.swift in Sources */,
 				F9C612DF6166805EFB782EF1 /* ExposureInfoView.swift in Sources */,
 				33CA67A1ACB6BC402D3AF4AA /* FilmPreset.swift in Sources */,
+				8D8EAB2C11934F49A1110005 /* FocalLengthPreview.swift in Sources */,
 				CA7EAEDD44CD59CAF100EA87 /* FilmSelectorView.swift in Sources */,
 				E2825F6D9C8BAFD56F68BEDD /* LightMeterApp.swift in Sources */,
 				8D8EAB2A11934F49A1110004 /* CameraPreviewLayout.swift in Sources */,

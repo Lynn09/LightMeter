@@ -2,6 +2,7 @@ import AVFoundation
 import Combine
 import CoreImage
 import CoreGraphics
+import Foundation
 
 // MARK: - Camera Manager
 
@@ -29,6 +30,9 @@ final class CameraManager: NSObject, ObservableObject {
 
     /// 冻结帧预览图
     @Published private(set) var frozenFrameImage: CGImage?
+
+    /// 当前手机镜头焦段信息
+    @Published private(set) var currentLensInfo: CameraLensInfo = .unknown
 
     // MARK: - Properties
 
@@ -424,6 +428,48 @@ final class CameraManager: NSObject, ObservableObject {
 
         self.session.addInput(videoInput)
         self.videoDeviceInput = videoInput
+        self.updateLensInfo(for: videoDevice)
+    }
+
+    /// 更新当前镜头焦段信息
+    private func updateLensInfo(for device: AVCaptureDevice) {
+        let fieldOfView = Double(device.activeFormat.videoFieldOfView)
+        let equivalentFocalLength: Double?
+
+        if fieldOfView > 0 {
+            let radians = fieldOfView * .pi / 180.0
+            equivalentFocalLength = 36.0 / (2.0 * tan(radians / 2.0))
+        } else {
+            equivalentFocalLength = fallbackEquivalentFocalLength(for: device.deviceType)
+        }
+
+        let displayName: String
+        if let equivalentFocalLength {
+            displayName = "手机 \(Int(round(equivalentFocalLength)))mm"
+        } else {
+            displayName = "镜头 --"
+        }
+
+        Task { @MainActor in
+            self.currentLensInfo = CameraLensInfo(
+                equivalentFocalLength: equivalentFocalLength,
+                displayName: displayName
+            )
+        }
+    }
+
+    /// 根据设备类型提供焦段降级估算
+    private func fallbackEquivalentFocalLength(for deviceType: AVCaptureDevice.DeviceType) -> Double? {
+        switch deviceType {
+        case .builtInUltraWideCamera:
+            return 13
+        case .builtInWideAngleCamera:
+            return 24
+        case .builtInTelephotoCamera:
+            return 77
+        default:
+            return nil
+        }
     }
 }
 

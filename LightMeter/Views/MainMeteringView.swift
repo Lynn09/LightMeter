@@ -19,6 +19,7 @@ struct MainMeteringView: View {
     @State private var showingFilmSelector = false
     @State private var showingPointEditMenu = false
     @State private var selectedPoint: MeteringPoint?
+    @State private var selectedFocalLength: StandardFocalLength = .mm35
 
     // MARK: - Constants
 
@@ -55,6 +56,8 @@ struct MainMeteringView: View {
                     selectedPointId: viewModel.selectedPointId,
                     frozenFrameImage: cameraManager.frozenFrameImage,
                     isFrameFrozen: cameraManager.isFrameFrozen,
+                    currentLensInfo: cameraManager.currentLensInfo,
+                    selectedFocalLength: selectedFocalLength,
                     onTap: { location in
                         handlePreviewTap(at: location)
                     },
@@ -66,6 +69,9 @@ struct MainMeteringView: View {
                     },
                     onSubjectMetering: {
                         handleSubjectMetering()
+                    },
+                    onFocalLengthSelected: { focalLength in
+                        selectedFocalLength = focalLength
                     }
                 )
                 .frame(maxHeight: .infinity)
@@ -208,8 +214,15 @@ struct MainMeteringView: View {
             return
         }
 
-        // 从相机获取真实亮度
-        let brightness = cameraManager.getBrightness(at: location, regionSize: 64)
+        let previewScale = FocalLengthPreviewGeometry.previewScale(
+            currentEquivalentFocalLength: cameraManager.currentLensInfo.equivalentFocalLength,
+            selectedFocalLength: selectedFocalLength
+        )
+        let sourceLocation = FocalLengthPreviewGeometry.sourcePoint(
+            forDisplayPoint: location,
+            previewScale: previewScale
+        )
+        let brightness = cameraManager.getBrightness(at: sourceLocation, regionSize: 64)
 
         viewModel.addMeteringPoint(x: location.x, y: location.y, brightness: brightness)
     }

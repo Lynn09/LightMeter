@@ -1,0 +1,1198 @@
+{
+  "version": "2.11",
+  "children": [
+    {
+      "type": "frame",
+      "id": "bi8Au",
+      "x": 0,
+      "y": 0,
+      "name": "Frame",
+      "enabled": false,
+      "clip": true,
+      "width": 800,
+      "height": 600,
+      "fill": "#FFFFFF",
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "dGel6",
+      "x": 0,
+      "y": 0,
+      "name": "主测光页面",
+      "width": 393,
+      "height": 852,
+      "fill": "#000000",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "BbAak",
+          "x": 0,
+          "y": 0,
+          "name": "顶部工具栏",
+          "width": 393,
+          "height": 64,
+          "padding": [
+            0,
+            16
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "WCz1z",
+              "name": "胶片选择按钮",
+              "height": 36,
+              "fill": "#1C1C1E",
+              "cornerRadius": 8,
+              "gap": 4,
+              "padding": [
+                12,
+                8
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "60xp1",
+                  "name": "胶片图标",
+                  "width": 16,
+                  "height": 16,
+                  "iconFontName": "film",
+                  "iconFontFamily": "lucide",
+                  "fill": "#007AFF"
+                },
+                {
+                  "type": "text",
+                  "id": "DUZxJ",
+                  "name": "胶片名称",
+                  "fill": "#FFFFFF",
+                  "content": "Velvia 50",
+                  "fontFamily": "SF Pro Text",
+                  "fontSize": 15,
+                  "fontWeight": "500"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qIXZa",
+              "name": "EV值显示",
+              "height": 36,
+              "gap": 6,
+              "padding": [
+                12,
+                8
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "COznS",
+                  "name": "EV标签",
+                  "fill": "#8E8E93",
+                  "content": "EV:",
+                  "fontFamily": "SF Pro Text",
+                  "fontSize": 13
+                },
+                {
+                  "type": "text",
+                  "id": "PhKRg",
+                  "name": "EV数值",
+                  "fill": "#FFFFFF",
+                  "content": "12.5",
+                  "fontFamily": "SF Mono",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "LNv5B",
+          "x": 0,
+          "y": 108,
+          "name": "取景区域",
+          "width": 393,
+          "height": 480,
+          "fill": "#1C1C1E",
+          "layout": "none",
+          "children": [
+            {
+              "type": "frame",
+              "id": "5YFgS",
+              "x": 0,
+              "y": 0,
+              "name": "取景内容",
+              "width": 393,
+              "height": 480,
+              "fill": "#0A0A0A",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "80GPV",
+                  "name": "skyGradient",
+                  "fill": {
+                    "type": "gradient",
+                    "gradientType": "linear",
+                    "enabled": true,
+                    "rotation": 180,
+                    "size": {
+                      "height": 1
+                    },
+                    "colors": [
+                      {
+                        "color": "#87CEEB",
+                        "position": 0
+                      },
+                      {
+                        "color": "#E0F6FF",
+                        "position": 1
+                      }
+                    ]
+                  },
+                  "width": 393,
+                  "height": 200
+                },
+                {
+                  "type": "path",
+                  "id": "r88cx",
+                  "name": "mountain",
+                  "geometry": "M0 150l100-70 100 40 100-60 93 40 0 100-393 0z",
+                  "fill": "#4A5568",
+                  "width": 393,
+                  "height": 150
+                },
+                {
+                  "type": "rectangle",
+                  "id": "Wrxra",
+                  "name": "foreground",
+                  "fill": "#2D3748",
+                  "width": 393,
+                  "height": 200
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "6MkG0",
+              "x": 80,
+              "y": 200,
+              "name": "测光点1",
+              "width": 40,
+              "height": 40,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 4,
+                  "id": "8ooz0",
+                  "x": 0,
+                  "y": 0,
+                  "name": "point1Square",
+                  "fill": "#00000000",
+                  "width": 40,
+                  "height": 40,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 3,
+                    "fill": "#34C759"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "dGRqR",
+              "x": 200,
+              "y": 150,
+              "name": "测光点2",
+              "width": 40,
+              "height": 40,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 4,
+                  "id": "ccB6T",
+                  "x": 0,
+                  "y": 0,
+                  "name": "point2Square",
+                  "fill": "#00000000",
+                  "width": 40,
+                  "height": 40,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 3,
+                    "fill": "#FF9500"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "c4hVv",
+              "x": 320,
+              "y": 100,
+              "name": "测光点3",
+              "width": 40,
+              "height": 40,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 4,
+                  "id": "DLeMn",
+                  "x": 0,
+                  "y": 0,
+                  "name": "point3Square",
+                  "fill": "#00000000",
+                  "width": 40,
+                  "height": 40,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 3,
+                    "fill": "#FF3B30"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "StppZ",
+          "x": 0,
+          "y": 588,
+          "name": "11区梯度条",
+          "width": 393,
+          "height": 100,
+          "fill": "#000000",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            12,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "XueHG",
+              "name": "Zone标签",
+              "width": "fill_container",
+              "height": 16,
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "TScjc",
+                  "name": "Zone 0",
+                  "fill": "#8E8E93",
+                  "content": "0",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "YZcIk",
+                  "name": "Zone I",
+                  "fill": "#8E8E93",
+                  "content": "I",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "8Xhn2",
+                  "name": "Zone II",
+                  "fill": "#8E8E93",
+                  "content": "II",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "1CFmA",
+                  "name": "Zone III",
+                  "fill": "#8E8E93",
+                  "content": "III",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "A8rog",
+                  "name": "Zone IV",
+                  "fill": "#8E8E93",
+                  "content": "IV",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "lKBLl",
+                  "name": "Zone V",
+                  "fill": "#FFFFFF",
+                  "content": "V",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "WUt9v",
+                  "name": "Zone VI",
+                  "fill": "#8E8E93",
+                  "content": "VI",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "uIJzB",
+                  "name": "Zone VII",
+                  "fill": "#8E8E93",
+                  "content": "VII",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "n1qFK",
+                  "name": "Zone VIII",
+                  "fill": "#8E8E93",
+                  "content": "VIII",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "IuNGf",
+                  "name": "Zone IX",
+                  "fill": "#8E8E93",
+                  "content": "IX",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "AYV9t",
+                  "name": "Zone X",
+                  "fill": "#8E8E93",
+                  "content": "X",
+                  "fontFamily": "Inter",
+                  "fontSize": 10,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "bBUS8",
+              "name": "渐变条",
+              "clip": true,
+              "width": "fill_container",
+              "height": 32,
+              "cornerRadius": 4,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 4,
+                  "id": "fOl6P",
+                  "x": 0,
+                  "y": 0,
+                  "name": "gradientRect",
+                  "fill": {
+                    "type": "gradient",
+                    "gradientType": "linear",
+                    "enabled": true,
+                    "rotation": 90,
+                    "size": {
+                      "height": 1
+                    },
+                    "colors": [
+                      {
+                        "color": "#000000",
+                        "position": 0
+                      },
+                      {
+                        "color": "#1A1A1A",
+                        "position": 0.1
+                      },
+                      {
+                        "color": "#333333",
+                        "position": 0.2
+                      },
+                      {
+                        "color": "#4D4D4D",
+                        "position": 0.3
+                      },
+                      {
+                        "color": "#666666",
+                        "position": 0.4
+                      },
+                      {
+                        "color": "#808080",
+                        "position": 0.5
+                      },
+                      {
+                        "color": "#999999",
+                        "position": 0.6
+                      },
+                      {
+                        "color": "#B3B3B3",
+                        "position": 0.7
+                      },
+                      {
+                        "color": "#CCCCCC",
+                        "position": 0.8
+                      },
+                      {
+                        "color": "#E6E6E6",
+                        "position": 0.9
+                      },
+                      {
+                        "color": "#FFFFFF",
+                        "position": 1
+                      }
+                    ]
+                  },
+                  "width": 361,
+                  "height": 32
+                },
+                {
+                  "type": "frame",
+                  "id": "SngA6",
+                  "x": 108,
+                  "y": 0,
+                  "name": "宽容度标记",
+                  "width": 144,
+                  "height": 32,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "id": "xrRWq",
+                      "x": 0,
+                      "y": 0,
+                      "name": "markerRect",
+                      "fill": "#007AFF20",
+                      "width": 144,
+                      "height": 32,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 2,
+                        "fill": "#007AFF"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "ellipse",
+                  "id": "CQNM7",
+                  "x": 156,
+                  "y": 8,
+                  "name": "测光点1标记",
+                  "fill": "#34C759",
+                  "width": 16,
+                  "height": 16
+                },
+                {
+                  "type": "ellipse",
+                  "id": "GHiuv",
+                  "x": 200,
+                  "y": 8,
+                  "name": "测光点2标记",
+                  "fill": "#FF9500",
+                  "width": 16,
+                  "height": 16
+                },
+                {
+                  "type": "ellipse",
+                  "id": "G4MdI",
+                  "x": 60,
+                  "y": 8,
+                  "name": "测光点3标记",
+                  "fill": "#FF3B30",
+                  "width": 16,
+                  "height": 16
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "H7rvb",
+          "x": 0,
+          "y": 688,
+          "name": "曝光参数栏",
+          "width": 393,
+          "height": 164,
+          "fill": "#000000",
+          "gap": 24,
+          "padding": [
+            16,
+            16,
+            40,
+            16
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "4ci2H",
+              "name": "光圈显示",
+              "layout": "vertical",
+              "gap": 4,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "T5s8O",
+                  "name": "光圈标签",
+                  "fill": "#8E8E93",
+                  "content": "光圈",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "LlJ3j",
+                  "name": "光圈值",
+                  "fill": "#FFFFFF",
+                  "content": "f/8",
+                  "fontFamily": "Inter",
+                  "fontSize": 28,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "rectangle",
+              "id": "zHXDE",
+              "name": "分隔线1",
+              "fill": "#3A3A3C",
+              "width": 1,
+              "height": 40
+            },
+            {
+              "type": "frame",
+              "id": "43GU4",
+              "name": "快门显示",
+              "layout": "vertical",
+              "gap": 4,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Pqzn8",
+                  "name": "快门标签",
+                  "fill": "#8E8E93",
+                  "content": "快门",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "krLwk",
+                  "name": "快门值",
+                  "fill": "#FFFFFF",
+                  "content": "1/125s",
+                  "fontFamily": "Inter",
+                  "fontSize": 28,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "rectangle",
+              "id": "OFVpm",
+              "name": "分隔线2",
+              "fill": "#3A3A3C",
+              "width": 1,
+              "height": 40
+            },
+            {
+              "type": "frame",
+              "id": "oyfCS",
+              "name": "ISO显示",
+              "layout": "vertical",
+              "gap": 4,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ApGPP",
+                  "name": "ISO标签",
+                  "fill": "#8E8E93",
+                  "content": "ISO",
+                  "fontFamily": "Inter",
+                  "fontSize": 11,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "dVZV0",
+                  "name": "ISO值",
+                  "fill": "#FFFFFF",
+                  "content": "50",
+                  "fontFamily": "Inter",
+                  "fontSize": 28,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "PfvNm",
+      "x": 450,
+      "y": 0,
+      "name": "胶片预设弹窗",
+      "width": 393,
+      "height": 852,
+      "fill": "#000000",
+      "layout": "none",
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "MdsT7",
+          "x": 0,
+          "y": 1,
+          "name": "遮罩层",
+          "fill": "#00000080",
+          "width": 393,
+          "height": 852
+        },
+        {
+          "type": "frame",
+          "id": "JgvPV",
+          "x": 0,
+          "y": 350,
+          "name": "弹窗容器",
+          "width": 393,
+          "height": 502,
+          "fill": "#1C1C1E",
+          "cornerRadius": 20,
+          "layout": "vertical",
+          "gap": 16,
+          "padding": [
+            20,
+            16,
+            40,
+            16
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "TQ9pL",
+              "name": "弹窗头部",
+              "width": "fill_container",
+              "height": 44,
+              "justifyContent": "space_between",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QF7Uz",
+                  "name": "弹窗标题",
+                  "fill": "#FFFFFF",
+                  "content": "选择胶片",
+                  "fontFamily": "Inter",
+                  "fontSize": 20,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "mwPOp",
+                  "name": "关闭按钮",
+                  "width": 32,
+                  "height": 32,
+                  "fill": "#2C2C2E",
+                  "cornerRadius": 16,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "fk3gI",
+                      "name": "关闭图标",
+                      "width": 16,
+                      "height": 16,
+                      "iconFontName": "x",
+                      "iconFontFamily": "lucide",
+                      "fill": "#8E8E93"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XNfd5",
+              "name": "Velvia 50选项",
+              "width": "fill_container",
+              "height": 80,
+              "fill": "#007AFF20",
+              "cornerRadius": 12,
+              "gap": 12,
+              "padding": 16,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "4WSxy",
+                  "name": "Velvia颜色",
+                  "fill": "#007AFF",
+                  "width": 12,
+                  "height": 12
+                },
+                {
+                  "type": "frame",
+                  "id": "PaciW",
+                  "name": "Velvia信息",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Tzm0E",
+                      "name": "Velvia名称",
+                      "fill": "#FFFFFF",
+                      "content": "Velvia 50",
+                      "fontFamily": "Inter",
+                      "fontSize": 17,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "FMI4v",
+                      "name": "Velvia描述",
+                      "fill": "#8E8E93",
+                      "content": "Zone IV-VIII · 高饱和度 · 易过曝",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "icon_font",
+                  "id": "Iwwoh",
+                  "name": "选中图标",
+                  "width": 24,
+                  "height": 24,
+                  "iconFontName": "check",
+                  "iconFontFamily": "lucide",
+                  "fill": "#007AFF"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "mjkzW",
+              "name": "Provia 100F选项",
+              "width": "fill_container",
+              "height": 80,
+              "fill": "#2C2C2E",
+              "cornerRadius": 12,
+              "gap": 12,
+              "padding": 16,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "Bta8b",
+                  "name": "Provia颜色",
+                  "fill": "#5856D6",
+                  "width": 12,
+                  "height": 12
+                },
+                {
+                  "type": "frame",
+                  "id": "NLYJU",
+                  "name": "Provia信息",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "DCaSD",
+                      "name": "Provia名称",
+                      "fill": "#FFFFFF",
+                      "content": "Provia 100F",
+                      "fontFamily": "Inter",
+                      "fontSize": 17,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "2zYom",
+                      "name": "Provia描述",
+                      "fill": "#8E8E93",
+                      "content": "Zone III-VIII · 通用型 · 肤色好",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pIKbt",
+              "name": "Ektachrome选项",
+              "width": "fill_container",
+              "height": 80,
+              "fill": "#2C2C2E",
+              "cornerRadius": 12,
+              "gap": 12,
+              "padding": 16,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "VTLup",
+                  "name": "Ektachrome颜色",
+                  "fill": "#FF9500",
+                  "width": 12,
+                  "height": 12
+                },
+                {
+                  "type": "frame",
+                  "id": "ccIcm",
+                  "name": "Ektachrome信息",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 4,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "OkQok",
+                      "name": "Ektachrome名称",
+                      "fill": "#FFFFFF",
+                      "content": "Ektachrome",
+                      "fontFamily": "Inter",
+                      "fontSize": 17,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Tljv8",
+                      "name": "Ektachrome描述",
+                      "fill": "#8E8E93",
+                      "content": "Zone III-VII · 细腻颗粒 · 风光",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "teJMY",
+      "x": 450,
+      "y": 900,
+      "name": "测光点编辑菜单",
+      "width": 393,
+      "height": 400,
+      "fill": "#000000",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "9qgQL",
+          "x": 0,
+          "y": 0,
+          "name": "取景预览",
+          "width": 393,
+          "height": 280,
+          "fill": "#1C1C1E",
+          "layout": "none",
+          "children": [
+            {
+              "type": "rectangle",
+              "id": "MDRpd",
+              "x": 0,
+              "y": 0,
+              "name": "previewBg",
+              "fill": {
+                "type": "gradient",
+                "gradientType": "linear",
+                "enabled": true,
+                "rotation": 180,
+                "size": {
+                  "height": 1
+                },
+                "colors": [
+                  {
+                    "color": "#87CEEB",
+                    "position": 0
+                  },
+                  {
+                    "color": "#E0F6FF",
+                    "position": 0.5
+                  },
+                  {
+                    "color": "#4A5568",
+                    "position": 1
+                  }
+                ]
+              },
+              "width": 393,
+              "height": 280
+            },
+            {
+              "type": "frame",
+              "id": "grXhY",
+              "x": 100,
+              "y": 120,
+              "name": "选中测光点",
+              "width": 50,
+              "height": 50,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 6,
+                  "id": "ElG6Q",
+                  "x": 0,
+                  "y": 0,
+                  "name": "selectedSquare",
+                  "fill": "#34C75920",
+                  "width": 50,
+                  "height": 50,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 4,
+                    "fill": "#34C759"
+                  }
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 10,
+                  "id": "7KvQV",
+                  "x": -10,
+                  "y": -10,
+                  "name": "selectedGlow",
+                  "fill": "#00000000",
+                  "width": 70,
+                  "height": 70,
+                  "stroke": {
+                    "align": "outside",
+                    "thickness": 2,
+                    "fill": "#34C75980"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "4XWum",
+          "x": 0,
+          "y": 280,
+          "name": "编辑菜单",
+          "width": 393,
+          "height": 120,
+          "fill": "#1C1C1E",
+          "gap": 16,
+          "padding": [
+            16,
+            20,
+            20,
+            20
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "miXx5",
+              "name": "重新测光按钮",
+              "width": 100,
+              "height": 80,
+              "fill": "#2C2C2E",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": [
+                12,
+                8
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "odH9O",
+                  "name": "重新测光图标",
+                  "width": 24,
+                  "height": 24,
+                  "iconFontName": "refresh-cw",
+                  "iconFontFamily": "lucide",
+                  "fill": "#007AFF"
+                },
+                {
+                  "type": "text",
+                  "id": "FLkGj",
+                  "name": "重新测光文字",
+                  "fill": "#FFFFFF",
+                  "content": "重新测光",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "oNahU",
+              "name": "删除按钮",
+              "width": 100,
+              "height": 80,
+              "fill": "#2C2C2E",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 8,
+              "padding": [
+                12,
+                8
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "zKkO4",
+                  "name": "删除图标",
+                  "width": 24,
+                  "height": 24,
+                  "iconFontName": "trash-2",
+                  "iconFontFamily": "lucide",
+                  "fill": "#FF3B30"
+                },
+                {
+                  "type": "text",
+                  "id": "8g7fM",
+                  "name": "删除文字",
+                  "fill": "#FFFFFF",
+                  "content": "删除",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pVQ79",
+              "name": "测光信息",
+              "width": 120,
+              "height": 80,
+              "fill": "#2C2C2E",
+              "cornerRadius": 12,
+              "layout": "vertical",
+              "gap": 4,
+              "padding": 12,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "1VA0C",
+                  "name": "信息行1",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "kFz4W",
+                      "name": "Zone标签",
+                      "fill": "#8E8E93",
+                      "content": "Zone:",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "D9Sxb",
+                      "name": "Zone值",
+                      "fill": "#34C759",
+                      "content": "III",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "x0zWi",
+                  "name": "信息行2",
+                  "width": "fill_container",
+                  "justifyContent": "space_between",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hoHwY",
+                      "name": "EV标签",
+                      "fill": "#8E8E93",
+                      "content": "EV:",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "rBJdl",
+                      "name": "EV值",
+                      "fill": "#FFFFFF",
+                      "content": "10.5",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+.DS_Store
+.build/
+.swiftpm/
+DerivedData/
+
+*.xcuserstate
+xcuserdata/
+LightMeter.xcodeproj.backup/
+LightMeter/LightMeter/
+
+*.swp
+*.swo

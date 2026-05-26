@@ -18,37 +18,47 @@ struct CameraPreviewView: View {
     /// 选中的测光点 ID
     let selectedPointId: UUID?
 
+    /// 冻结帧图像
+    let frozenFrameImage: CGImage?
+
+    /// 是否处于静态帧模式
+    let isFrameFrozen: Bool
+
     /// 点击预览的回调
     let onTap: (CGPoint) -> Void
 
     /// 点击测光点的回调
     let onPointTap: (MeteringPoint) -> Void
 
-    // MARK: - Constants
+    /// 冻结/恢复回调
+    let onFreezeToggle: () -> Void
 
-    private enum Constants {
-        static let previewHeight: CGFloat = 480
-    }
+    /// 主体测光回调
+    let onSubjectMetering: () -> Void
 
     // MARK: - Body
 
     var body: some View {
         GeometryReader { geometry in
+            let contentSize = CameraPreviewLayout.contentSize(for: geometry.size)
+
             ZStack {
-                // 相机预览层
-                CameraPreviewLayer(session: session)
+                // 相机预览层或冻结帧
+                previewContent(in: contentSize)
 
                 // 测光点标记覆盖层
-                meteringPointsOverlay(in: geometry)
+                meteringPointsOverlay(in: contentSize)
+
+                // 静态帧控制
+                staticFrameControls
             }
-            .frame(height: Constants.previewHeight)
+            .frame(width: contentSize.width, height: contentSize.height)
             .clipped()
             .contentShape(Rectangle())
             .onTapGesture { location in
-                // 将点击坐标转换为归一化坐标 (0~1)
-                let normalizedPoint = CGPoint(
-                    x: location.x / geometry.size.width,
-                    y: location.y / geometry.size.height
+                let normalizedPoint = CameraPreviewLayout.normalizedPoint(
+                    from: location,
+                    in: contentSize
                 )
                 onTap(normalizedPoint)
             }
@@ -57,13 +67,75 @@ struct CameraPreviewView: View {
 
     // MARK: - Subviews
 
+    /// 预览内容
+    private func previewContent(in contentSize: CGSize) -> some View {
+        ZStack {
+            CameraPreviewLayer(session: session)
+                .opacity(isFrameFrozen ? 0 : 1)
+
+            if let frozenFrameImage {
+                Image(decorative: frozenFrameImage, scale: 1, orientation: .up)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: contentSize.width, height: contentSize.height)
+                    .transition(.opacity)
+            }
+        }
+        .frame(width: contentSize.width, height: contentSize.height)
+    }
+
+    /// 静态帧控制按钮
+    private var staticFrameControls: some View {
+        VStack {
+            Spacer()
+
+            HStack(spacing: 12) {
+                Button(action: onFreezeToggle) {
+                    Image(systemName: isFrameFrozen ? "play.fill" : "pause.fill")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 42, height: 34)
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.68))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.18), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(PlainButtonStyle())
+
+                if isFrameFrozen {
+                    Button(action: onSubjectMetering) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "scope")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("主体测光")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                        .background(
+                            Capsule()
+                                .fill(Color(hex: "#007AFF")!.opacity(0.88))
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+            }
+            .padding(.bottom, 14)
+        }
+    }
+
     /// 测光点覆盖层
-    private func meteringPointsOverlay(in geometry: GeometryProxy) -> some View {
+    private func meteringPointsOverlay(in contentSize: CGSize) -> some View {
         ForEach(meteringPoints) { point in
             MeteringPointView(
                 point: point,
                 isSelected: selectedPointId == point.id,
-                containerSize: geometry.size,
+                containerSize: contentSize,
                 onTap: {
                     onPointTap(point)
                 }
@@ -132,6 +204,8 @@ private class VideoPreviewView: UIView {
         session: AVCaptureSession(),
         meteringPoints: points,
         selectedPointId: points.first?.id,
+        frozenFrameImage: nil,
+        isFrameFrozen: false,
         onTap: { location in
             print("Tapped at: \(location)")
             let colorIndex = points.count % MeteringPoint.colors.count
@@ -147,6 +221,8 @@ private class VideoPreviewView: UIView {
         },
         onPointTap: { point in
             print("Selected point: \(point.id)")
-        }
+        },
+        onFreezeToggle: {},
+        onSubjectMetering: {}
     )
 }

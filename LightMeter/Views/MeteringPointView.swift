@@ -39,8 +39,10 @@ struct MeteringPointView: View {
                 .frame(width: 24, height: 24)
         }
         .position(
-            x: point.x * containerSize.width,
-            y: point.y * containerSize.height
+            MeteringPointLayout.displayPosition(
+                normalizedPoint: CGPoint(x: point.x, y: point.y),
+                containerSize: containerSize
+            )
         )
         .onTapGesture {
             onTap()
@@ -67,10 +69,10 @@ struct MeteringPointView: View {
     }
 
     private var exposureValueBadgeYOffset: CGFloat {
-        let pointY = point.y * containerSize.height
-        let topBadgeClearance: CGFloat = 46
-
-        return pointY < topBadgeClearance ? 34 : -34
+        MeteringPointLayout.exposureValueBadgeYOffset(
+            normalizedY: point.y,
+            containerHeight: containerSize.height
+        )
     }
 }
 

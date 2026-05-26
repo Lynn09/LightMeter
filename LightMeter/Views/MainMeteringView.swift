@@ -53,11 +53,19 @@ struct MainMeteringView: View {
                     session: cameraManager.session,
                     meteringPoints: viewModel.meteringPoints,
                     selectedPointId: viewModel.selectedPointId,
+                    frozenFrameImage: cameraManager.frozenFrameImage,
+                    isFrameFrozen: cameraManager.isFrameFrozen,
                     onTap: { location in
                         handlePreviewTap(at: location)
                     },
                     onPointTap: { point in
                         handlePointTap(point)
+                    },
+                    onFreezeToggle: {
+                        handleStaticFrameToggle()
+                    },
+                    onSubjectMetering: {
+                        handleSubjectMetering()
                     }
                 )
                 .frame(maxHeight: .infinity)
@@ -211,6 +219,30 @@ struct MainMeteringView: View {
         viewModel.selectPoint(id: point.id)
         selectedPoint = point
         showingPointEditMenu = true
+    }
+
+    /// 处理静态帧截取/恢复
+    private func handleStaticFrameToggle() {
+        if cameraManager.isFrameFrozen {
+            cameraManager.resumeLivePreview()
+            cameraManager.startSession()
+        } else if cameraManager.captureStaticFrame() {
+            cameraManager.stopSession()
+        }
+    }
+
+    /// 对静态帧或当前帧中的主体进行自动测光
+    private func handleSubjectMetering() {
+        guard viewModel.canAddMeteringPoint,
+              let result = cameraManager.getSubjectMeteringResult() else {
+            return
+        }
+
+        viewModel.addMeteringPoint(
+            x: result.normalizedPoint.x,
+            y: result.normalizedPoint.y,
+            brightness: result.brightness
+        )
     }
 }
 

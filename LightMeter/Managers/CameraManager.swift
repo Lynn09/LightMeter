@@ -1,6 +1,7 @@
 import AVFoundation
 import Combine
 import CoreImage
+import CoreGraphics
 
 // MARK: - Camera Manager
 
@@ -23,6 +24,12 @@ final class CameraManager: NSObject, ObservableObject {
     /// 错误信息
     @Published private(set) var error: CameraError?
 
+    /// 是否已冻结当前帧
+    @Published private(set) var isFrameFrozen: Bool = false
+
+    /// 冻结帧预览图
+    @Published private(set) var frozenFrameImage: CGImage?
+
     // MARK: - Properties
 
     /// 相机会话
@@ -42,6 +49,9 @@ final class CameraManager: NSObject, ObservableObject {
 
     /// 当前最新帧缓存
     private var currentFrame: CVImageBuffer?
+
+    /// 冻结帧缓存
+    private var frozenFrame: CVImageBuffer?
 
     /// 帧访问锁
     private let frameLock = NSLock()
@@ -141,6 +151,33 @@ final class CameraManager: NSObject, ObservableObject {
         return previewLayer
     }
 
+    /// 截取并冻结当前视频帧
+    /// - Returns: 是否成功冻结
+    @discardableResult
+    func captureStaticFrame() -> Bool {
+        frameLock.lock()
+        guard let frame = currentFrame else {
+            frameLock.unlock()
+            return false
+        }
+        frozenFrame = frame
+        frameLock.unlock()
+
+        frozenFrameImage = makeCGImage(from: frame)
+        isFrameFrozen = frozenFrameImage != nil
+        return isFrameFrozen
+    }
+
+    /// 恢复实时取景
+    func resumeLivePreview() {
+        frameLock.lock()
+        frozenFrame = nil
+        frameLock.unlock()
+
+        frozenFrameImage = nil
+        isFrameFrozen = false
+    }
+
     // MARK: - Private Methods
 
     /// 配置相机会话
@@ -190,20 +227,17 @@ final class CameraManager: NSObject, ObservableObject {
 
     /// 获取指定位置的亮度值（带平滑处理）
     /// - Parameters:
-    ///   - point: 点击位置（相对于预览层的坐标）
+    ///   - point: 点击位置（归一化坐标 0...1）
     ///   - regionSize: 测光区域大小（正方形边长，像素）
     /// - Returns: 归一化亮度值 [0.0, 1.0]
     func getBrightness(at point: CGPoint, regionSize: Int = 64) -> Double {
-        frameLock.lock()
-        guard let frame = currentFrame else {
-            frameLock.unlock()
+        guard let frame = activeMeteringFrame() else {
             // 无可用帧时返回历史平均值或默认值
             return getSmoothedBrightness(fallback: 0.18)
         }
-        frameLock.unlock()
 
-        // 从帧中提取指定区域的亮度
-        let rawBrightness = extractBrightness(from: frame, at: point, regionSize: regionSize)
+        let samplingPoint = normalizedSamplingPoint(forDisplayPoint: point)
+        let rawBrightness = extractBrightness(from: frame, atNormalizedPoint: samplingPoint, regionSize: regionSize)
 
         // 应用平滑处理
         let smoothedBrightness = addBrightnessToHistoryAndSmooth(rawBrightness)
@@ -211,7 +245,51 @@ final class CameraManager: NSObject, ObservableObject {
         return smoothedBrightness
     }
 
+    /// 对冻结帧或当前帧中的主体进行自动测光
+    func getSubjectMeteringResult() -> SubjectMeteringResult? {
+        guard let frame = activeMeteringFrame() else {
+            return nil
+        }
+
+        return SubjectMeteringAnalyzer.analyze(gridSize: 9) { point in
+            let samplingPoint = normalizedSamplingPoint(forDisplayPoint: point)
+            return extractBrightness(from: frame, atNormalizedPoint: samplingPoint, regionSize: 96)
+        }
+    }
+
     // MARK: - Private Helper Methods
+
+    /// 当前用于测光的帧。冻结后优先使用冻结帧。
+    private func activeMeteringFrame() -> CVImageBuffer? {
+        frameLock.lock()
+        defer { frameLock.unlock() }
+
+        return frozenFrame ?? currentFrame
+    }
+
+    /// 将预览显示坐标转换为当前测光帧的原始采样坐标
+    private func normalizedSamplingPoint(forDisplayPoint point: CGPoint) -> CGPoint {
+        frameLock.lock()
+        let isUsingFrozenFrame = frozenFrame != nil
+        frameLock.unlock()
+
+        guard isUsingFrozenFrame else {
+            return point
+        }
+
+        return StaticFramePreviewGeometry.rawPoint(
+            forDisplayPoint: point,
+            orientation: .portrait
+        )
+    }
+
+    /// 从视频帧生成静态预览图
+    private func makeCGImage(from frame: CVImageBuffer) -> CGImage? {
+        let orientation = StaticFramePreviewGeometry.exifOrientation(for: .portrait)
+        let ciImage = CIImage(cvImageBuffer: frame).oriented(orientation)
+        let context = CIContext(options: nil)
+        return context.createCGImage(ciImage, from: ciImage.extent)
+    }
 
     /// 将亮度值添加到历史记录并返回平滑后的值
     /// 使用简单移动平均（SMA）进行平滑
@@ -252,10 +330,10 @@ final class CameraManager: NSObject, ObservableObject {
     /// 从图像帧中提取指定区域的平均亮度
     /// - Parameters:
     ///   - frame: 视频帧（CVImageBuffer）
-    ///   - point: 中心点坐标
+    ///   - point: 中心点归一化坐标
     ///   - regionSize: 测光区域大小
     /// - Returns: 归一化亮度值 [0.0, 1.0]
-    private func extractBrightness(from frame: CVImageBuffer, at point: CGPoint, regionSize: Int) -> Double {
+    private func extractBrightness(from frame: CVImageBuffer, atNormalizedPoint point: CGPoint, regionSize: Int) -> Double {
         CVPixelBufferLockBaseAddress(frame, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(frame, .readOnly) }
 
@@ -264,8 +342,10 @@ final class CameraManager: NSObject, ObservableObject {
 
         // 计算测光区域边界
         let halfSize = regionSize / 2
-        let x = max(halfSize, min(Int(point.x), width - halfSize))
-        let y = max(halfSize, min(Int(point.y), height - halfSize))
+        let normalizedX = max(0, min(1, point.x))
+        let normalizedY = max(0, min(1, point.y))
+        let x = max(halfSize, min(Int(normalizedX * CGFloat(width)), width - halfSize))
+        let y = max(halfSize, min(Int(normalizedY * CGFloat(height)), height - halfSize))
 
         guard let baseAddress = CVPixelBufferGetBaseAddress(frame) else {
             return 0.18 // 默认中灰

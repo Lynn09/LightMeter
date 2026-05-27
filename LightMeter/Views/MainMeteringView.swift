@@ -56,7 +56,6 @@ struct MainMeteringView: View {
                     selectedPointId: viewModel.selectedPointId,
                     frozenFrameImage: cameraManager.frozenFrameImage,
                     isFrameFrozen: cameraManager.isFrameFrozen,
-                    currentLensInfo: cameraManager.currentLensInfo,
                     selectedFocalLength: selectedFocalLength,
                     onTap: { location in
                         handlePreviewTap(at: location)

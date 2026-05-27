@@ -89,6 +89,18 @@ enum FocalLengthPreviewGeometry {
     }
 }
 
+// MARK: - Focal Length Drawer Presentation
+
+/// 焦段抽屉展示规则
+enum FocalLengthDrawerPresentation {
+    static func visibleFocalLengths(
+        isExpanded: Bool,
+        selectedFocalLength: StandardFocalLength
+    ) -> [StandardFocalLength] {
+        isExpanded ? StandardFocalLength.allCases : [selectedFocalLength]
+    }
+}
+
 // MARK: - Static Frame Controls Layout
 
 /// 静态帧控制按钮布局

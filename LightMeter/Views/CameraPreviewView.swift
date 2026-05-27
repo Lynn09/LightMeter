@@ -24,9 +24,6 @@ struct CameraPreviewView: View {
     /// 是否处于静态帧模式
     let isFrameFrozen: Bool
 
-    /// 当前手机镜头焦段信息
-    let currentLensInfo: CameraLensInfo
-
     /// 当前选择的标准定焦焦段
     let selectedFocalLength: StandardFocalLength
 
@@ -44,6 +41,10 @@ struct CameraPreviewView: View {
 
     /// 标准定焦选择回调
     let onFocalLengthSelected: (StandardFocalLength) -> Void
+
+    // MARK: - State
+
+    @State private var isFocalLengthDrawerExpanded = false
 
     // MARK: - Body
 
@@ -146,61 +147,27 @@ struct CameraPreviewView: View {
 
     /// 焦段显示和标准定焦选择
     private var focalLengthControls: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Text(currentLensInfo.displayName)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .frame(height: 28)
-                    .background(
-                        Capsule()
-                            .fill(Color.black.opacity(0.68))
-                    )
-
-                if FocalLengthPreviewGeometry.isWiderThanCurrentLens(
-                    baseEquivalentFocalLength: currentLensInfo.baseEquivalentFocalLength,
-                    selectedFocalLength: selectedFocalLength
-                ) {
-                    Text("无法完整模拟")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.white.opacity(0.85))
-                        .padding(.horizontal, 8)
-                        .frame(height: 26)
-                        .background(
-                            Capsule()
-                                .fill(Color.black.opacity(0.56))
-                        )
-                }
-            }
-
-            Text(currentLensInfo.renderingMode)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.white.opacity(0.85))
-                .padding(.horizontal, 8)
-                .frame(height: 24)
-                .background(
-                    Capsule()
-                        .fill(Color.black.opacity(0.52))
-                )
-
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                ForEach(StandardFocalLength.allCases) { focalLength in
+                ForEach(
+                    FocalLengthDrawerPresentation.visibleFocalLengths(
+                        isExpanded: isFocalLengthDrawerExpanded,
+                        selectedFocalLength: selectedFocalLength
+                    )
+                ) { focalLength in
                     Button {
-                        onFocalLengthSelected(focalLength)
+                        if isFocalLengthDrawerExpanded {
+                            onFocalLengthSelected(focalLength)
+                            withAnimation(.easeInOut(duration: 0.18)) {
+                                isFocalLengthDrawerExpanded = false
+                            }
+                        } else {
+                            withAnimation(.easeInOut(duration: 0.18)) {
+                                isFocalLengthDrawerExpanded = true
+                            }
+                        }
                     } label: {
-                        Text(focalLength.label)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(selectedFocalLength == focalLength ? .black : .white)
-                            .frame(width: 38, height: 28)
-                            .background(
-                                Capsule()
-                                    .fill(selectedFocalLength == focalLength ? Color.white : Color.black.opacity(0.62))
-                            )
-                            .overlay(
-                                Capsule()
-                                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                            )
+                        focalLengthButtonLabel(for: focalLength)
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
@@ -212,6 +179,29 @@ struct CameraPreviewView: View {
         .padding(.leading, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .allowsHitTesting(true)
+    }
+
+    private func focalLengthButtonLabel(for focalLength: StandardFocalLength) -> some View {
+        HStack(spacing: 4) {
+            Text(focalLength.displayLabel)
+                .font(.system(size: 12, weight: .semibold))
+
+            if !isFocalLengthDrawerExpanded {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .bold))
+            }
+        }
+        .foregroundColor(selectedFocalLength == focalLength ? .black : .white)
+        .padding(.horizontal, isFocalLengthDrawerExpanded ? 10 : 11)
+        .frame(height: 30)
+        .background(
+            Capsule()
+                .fill(selectedFocalLength == focalLength ? Color.white : Color.black.opacity(0.62))
+        )
+        .overlay(
+            Capsule()
+                .stroke(Color.white.opacity(0.18), lineWidth: 1)
+        )
     }
 
     /// 测光点覆盖层
@@ -291,13 +281,6 @@ private class VideoPreviewView: UIView {
         selectedPointId: points.first?.id,
         frozenFrameImage: nil,
         isFrameFrozen: false,
-        currentLensInfo: CameraLensInfo(
-            equivalentFocalLength: 24,
-            baseEquivalentFocalLength: 24,
-            zoomFactor: 1,
-            displayName: "手机 24mm",
-            renderingMode: "系统镜头"
-        ),
         selectedFocalLength: .mm35,
         onTap: { location in
             print("Tapped at: \(location)")

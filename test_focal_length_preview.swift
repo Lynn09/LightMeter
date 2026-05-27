@@ -34,5 +34,19 @@ struct FocalLengthPreviewTest {
 
         let displayName = CameraLensInfo.makeDisplayName(equivalentFocalLength: 49.6)
         precondition(displayName == "手机 50mm")
+
+        precondition(
+            FocalLengthDrawerPresentation.visibleFocalLengths(
+                isExpanded: false,
+                selectedFocalLength: .mm35
+            ) == [.mm35]
+        )
+
+        precondition(
+            FocalLengthDrawerPresentation.visibleFocalLengths(
+                isExpanded: true,
+                selectedFocalLength: .mm35
+            ) == StandardFocalLength.allCases
+        )
     }
 }

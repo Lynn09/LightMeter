@@ -60,6 +60,12 @@ final class CameraManager: NSObject, ObservableObject {
     /// 帧访问锁
     private let frameLock = NSLock()
 
+    /// 基准 35mm 等效焦段（videoZoomFactor = 1 时）
+    private var baseEquivalentFocalLength: Double?
+
+    /// 当前选择的标准定焦
+    private var selectedFocalLength: StandardFocalLength = .mm35
+
     /// 亮度历史记录（用于平滑处理）
     private var brightnessHistory: [Double] = []
     private let maxHistorySize = 5
@@ -180,6 +186,20 @@ final class CameraManager: NSObject, ObservableObject {
 
         frozenFrameImage = nil
         isFrameFrozen = false
+    }
+
+    /// 选择标准定焦焦段，并通过相机 zoom 驱动系统镜头切换/变焦
+    func selectFocalLength(_ focalLength: StandardFocalLength) {
+        selectedFocalLength = focalLength
+
+        sessionQueue.async { [weak self] in
+            guard let self,
+                  let device = self.videoDeviceInput?.device else {
+                return
+            }
+
+            self.applyZoom(for: focalLength, on: device)
+        }
     }
 
     // MARK: - Private Methods
@@ -395,7 +415,7 @@ final class CameraManager: NSObject, ObservableObject {
     /// 添加视频输入
     private func addVideoInput() throws {
         // 获取后置摄像头
-        guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+        guard let videoDevice = preferredBackCamera() else {
             throw CameraError.deviceNotFound
         }
 
@@ -429,33 +449,85 @@ final class CameraManager: NSObject, ObservableObject {
         self.session.addInput(videoInput)
         self.videoDeviceInput = videoInput
         self.updateLensInfo(for: videoDevice)
+        self.applyZoom(for: selectedFocalLength, on: videoDevice)
     }
 
     /// 更新当前镜头焦段信息
     private func updateLensInfo(for device: AVCaptureDevice) {
         let fieldOfView = Double(device.activeFormat.videoFieldOfView)
-        let equivalentFocalLength: Double?
 
-        if fieldOfView > 0 {
+        if baseEquivalentFocalLength == nil, fieldOfView > 0 {
             let radians = fieldOfView * .pi / 180.0
-            equivalentFocalLength = 36.0 / (2.0 * tan(radians / 2.0))
-        } else {
-            equivalentFocalLength = fallbackEquivalentFocalLength(for: device.deviceType)
+            baseEquivalentFocalLength = 36.0 / (2.0 * tan(radians / 2.0))
         }
 
-        let displayName: String
-        if let equivalentFocalLength {
-            displayName = "手机 \(Int(round(equivalentFocalLength)))mm"
-        } else {
-            displayName = "镜头 --"
-        }
+        let base = baseEquivalentFocalLength ?? fallbackEquivalentFocalLength(for: device.deviceType)
+        let equivalentFocalLength = base.map { $0 * Double(device.videoZoomFactor) }
+        let displayName = CameraLensInfo.makeDisplayName(equivalentFocalLength: equivalentFocalLength)
+        let zoomFactor = Double(device.videoZoomFactor)
+        let renderingMode = lensRenderingMode(for: device, zoomFactor: device.videoZoomFactor)
 
         Task { @MainActor in
             self.currentLensInfo = CameraLensInfo(
                 equivalentFocalLength: equivalentFocalLength,
-                displayName: displayName
+                baseEquivalentFocalLength: base,
+                zoomFactor: zoomFactor,
+                displayName: displayName,
+                renderingMode: renderingMode
             )
         }
+    }
+
+    /// 优先使用系统虚拟多摄设备，让 iOS 管理物理镜头切换
+    private func preferredBackCamera() -> AVCaptureDevice? {
+        let preferredTypes: [AVCaptureDevice.DeviceType] = [
+            .builtInTripleCamera,
+            .builtInDualWideCamera,
+            .builtInDualCamera,
+            .builtInWideAngleCamera
+        ]
+
+        for deviceType in preferredTypes {
+            if let device = AVCaptureDevice.default(deviceType, for: .video, position: .back) {
+                return device
+            }
+        }
+
+        return AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+    }
+
+    /// 应用标准焦段对应的 zoom factor
+    private func applyZoom(for focalLength: StandardFocalLength, on device: AVCaptureDevice) {
+        let base = baseEquivalentFocalLength ?? fallbackEquivalentFocalLength(for: device.deviceType)
+        let desiredZoom = FocalLengthPreviewGeometry.zoomFactor(
+            baseEquivalentFocalLength: base,
+            selectedFocalLength: focalLength
+        )
+        let clampedZoom = FocalLengthPreviewGeometry.clampedZoomFactor(
+            desiredZoom,
+            minimum: device.minAvailableVideoZoomFactor,
+            maximum: device.maxAvailableVideoZoomFactor
+        )
+
+        do {
+            try device.lockForConfiguration()
+            device.videoZoomFactor = clampedZoom
+            device.unlockForConfiguration()
+            updateLensInfo(for: device)
+        } catch {
+            Task { @MainActor in
+                self.error = .configurationFailed(error.localizedDescription)
+            }
+        }
+    }
+
+    /// 当前焦段渲染方式说明
+    private func lensRenderingMode(for device: AVCaptureDevice, zoomFactor: CGFloat) -> String {
+        guard !device.virtualDeviceSwitchOverVideoZoomFactors.isEmpty else {
+            return zoomFactor > 1.01 ? "系统裁切" : "原生镜头"
+        }
+
+        return "系统镜头"
     }
 
     /// 根据设备类型提供焦段降级估算

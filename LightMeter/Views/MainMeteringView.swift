@@ -72,6 +72,7 @@ struct MainMeteringView: View {
                     },
                     onFocalLengthSelected: { focalLength in
                         selectedFocalLength = focalLength
+                        cameraManager.selectFocalLength(focalLength)
                     }
                 )
                 .frame(maxHeight: .infinity)
@@ -214,15 +215,7 @@ struct MainMeteringView: View {
             return
         }
 
-        let previewScale = FocalLengthPreviewGeometry.previewScale(
-            currentEquivalentFocalLength: cameraManager.currentLensInfo.equivalentFocalLength,
-            selectedFocalLength: selectedFocalLength
-        )
-        let sourceLocation = FocalLengthPreviewGeometry.sourcePoint(
-            forDisplayPoint: location,
-            previewScale: previewScale
-        )
-        let brightness = cameraManager.getBrightness(at: sourceLocation, regionSize: 64)
+        let brightness = cameraManager.getBrightness(at: location, regionSize: 64)
 
         viewModel.addMeteringPoint(x: location.x, y: location.y, brightness: brightness)
     }

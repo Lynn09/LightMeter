@@ -23,51 +23,69 @@ enum StandardFocalLength: Int, CaseIterable, Identifiable {
 /// 当前手机镜头信息
 struct CameraLensInfo: Equatable {
     let equivalentFocalLength: Double?
+    let baseEquivalentFocalLength: Double?
+    let zoomFactor: Double
     let displayName: String
+    let renderingMode: String
 
     static let unknown = CameraLensInfo(
         equivalentFocalLength: nil,
-        displayName: "镜头 --"
+        baseEquivalentFocalLength: nil,
+        zoomFactor: 1,
+        displayName: "镜头 --",
+        renderingMode: "未知"
     )
+
+    static func makeDisplayName(equivalentFocalLength: Double?) -> String {
+        guard let equivalentFocalLength else {
+            return "镜头 --"
+        }
+
+        return "手机 \(Int(round(equivalentFocalLength)))mm"
+    }
 }
 
 // MARK: - Focal Length Preview Geometry
 
 /// 标准焦段取景预览的裁切规则
 enum FocalLengthPreviewGeometry {
-    static func previewScale(
-        currentEquivalentFocalLength: Double?,
+    static func zoomFactor(
+        baseEquivalentFocalLength: Double?,
         selectedFocalLength: StandardFocalLength
     ) -> CGFloat {
-        guard let currentEquivalentFocalLength,
-              currentEquivalentFocalLength > 0 else {
+        guard let baseEquivalentFocalLength,
+              baseEquivalentFocalLength > 0 else {
             return 1
         }
 
         let target = Double(selectedFocalLength.millimeters)
-        return CGFloat(max(1, target / currentEquivalentFocalLength))
+        return CGFloat(max(1, target / baseEquivalentFocalLength))
     }
 
-    static func sourcePoint(
-        forDisplayPoint point: CGPoint,
-        previewScale: CGFloat
-    ) -> CGPoint {
-        let safeScale = max(1, previewScale)
-        let x = 0.5 + (max(0, min(1, point.x)) - 0.5) / safeScale
-        let y = 0.5 + (max(0, min(1, point.y)) - 0.5) / safeScale
+    static func clampedZoomFactor(
+        _ zoomFactor: CGFloat,
+        minimum: CGFloat,
+        maximum: CGFloat
+    ) -> CGFloat {
+        max(minimum, min(maximum, zoomFactor))
+    }
 
-        return CGPoint(x: max(0, min(1, x)), y: max(0, min(1, y)))
+    static func previewScale(
+        currentEquivalentFocalLength: Double?,
+        selectedFocalLength: StandardFocalLength
+    ) -> CGFloat {
+        1
     }
 
     static func isWiderThanCurrentLens(
-        currentEquivalentFocalLength: Double?,
+        baseEquivalentFocalLength: Double?,
         selectedFocalLength: StandardFocalLength
     ) -> Bool {
-        guard let currentEquivalentFocalLength else {
+        guard let baseEquivalentFocalLength else {
             return false
         }
 
-        return Double(selectedFocalLength.millimeters) < currentEquivalentFocalLength
+        return Double(selectedFocalLength.millimeters) < baseEquivalentFocalLength
     }
 }
 

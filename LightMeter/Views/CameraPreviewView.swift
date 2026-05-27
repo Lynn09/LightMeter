@@ -50,14 +50,10 @@ struct CameraPreviewView: View {
     var body: some View {
         GeometryReader { geometry in
             let contentSize = CameraPreviewLayout.contentSize(for: geometry.size)
-            let previewScale = FocalLengthPreviewGeometry.previewScale(
-                currentEquivalentFocalLength: currentLensInfo.equivalentFocalLength,
-                selectedFocalLength: selectedFocalLength
-            )
 
             ZStack {
                 // 相机预览层或冻结帧
-                previewContent(in: contentSize, previewScale: previewScale)
+                previewContent(in: contentSize)
                     .contentShape(Rectangle())
                     .onTapGesture { location in
                         let normalizedPoint = CameraPreviewLayout.normalizedPoint(
@@ -86,7 +82,7 @@ struct CameraPreviewView: View {
     // MARK: - Subviews
 
     /// 预览内容
-    private func previewContent(in contentSize: CGSize, previewScale: CGFloat) -> some View {
+    private func previewContent(in contentSize: CGSize) -> some View {
         ZStack {
             CameraPreviewLayer(session: session)
                 .opacity(isFrameFrozen ? 0 : 1)
@@ -100,7 +96,6 @@ struct CameraPreviewView: View {
             }
         }
         .frame(width: contentSize.width, height: contentSize.height)
-        .scaleEffect(previewScale, anchor: .center)
     }
 
     /// 静态帧控制按钮
@@ -164,7 +159,7 @@ struct CameraPreviewView: View {
                     )
 
                 if FocalLengthPreviewGeometry.isWiderThanCurrentLens(
-                    currentEquivalentFocalLength: currentLensInfo.equivalentFocalLength,
+                    baseEquivalentFocalLength: currentLensInfo.baseEquivalentFocalLength,
                     selectedFocalLength: selectedFocalLength
                 ) {
                     Text("无法完整模拟")
@@ -178,6 +173,16 @@ struct CameraPreviewView: View {
                         )
                 }
             }
+
+            Text(currentLensInfo.renderingMode)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.85))
+                .padding(.horizontal, 8)
+                .frame(height: 24)
+                .background(
+                    Capsule()
+                        .fill(Color.black.opacity(0.52))
+                )
 
             HStack(spacing: 6) {
                 ForEach(StandardFocalLength.allCases) { focalLength in
@@ -286,7 +291,13 @@ private class VideoPreviewView: UIView {
         selectedPointId: points.first?.id,
         frozenFrameImage: nil,
         isFrameFrozen: false,
-        currentLensInfo: CameraLensInfo(equivalentFocalLength: 24, displayName: "手机 24mm"),
+        currentLensInfo: CameraLensInfo(
+            equivalentFocalLength: 24,
+            baseEquivalentFocalLength: 24,
+            zoomFactor: 1,
+            displayName: "手机 24mm",
+            renderingMode: "系统镜头"
+        ),
         selectedFocalLength: .mm35,
         onTap: { location in
             print("Tapped at: \(location)")

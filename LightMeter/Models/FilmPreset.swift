@@ -13,6 +13,7 @@ struct FilmPreset: Identifiable, Equatable, Hashable {
     let minZone: Int
     let maxZone: Int
     let iso: Int
+    let packagingImageName: String
 
     init(
         id: UUID = UUID(),
@@ -22,7 +23,8 @@ struct FilmPreset: Identifiable, Equatable, Hashable {
         description: String,
         minZone: Int,
         maxZone: Int,
-        iso: Int
+        iso: Int,
+        packagingImageName: String
     ) {
         self.id = id
         self.name = name
@@ -32,6 +34,7 @@ struct FilmPreset: Identifiable, Equatable, Hashable {
         self.minZone = minZone
         self.maxZone = maxZone
         self.iso = iso
+        self.packagingImageName = packagingImageName
     }
 
     // MARK: - Swift Color
@@ -74,7 +77,8 @@ extension FilmPreset {
         description: "高饱和度，色彩鲜艳",
         minZone: 4,
         maxZone: 8,
-        iso: 50
+        iso: 50,
+        packagingImageName: "film_pack_velvia_50"
     )
 
     /// Provia 100F 反转片
@@ -86,7 +90,8 @@ extension FilmPreset {
         description: "中性色彩，平衡性好",
         minZone: 3,
         maxZone: 8,
-        iso: 100
+        iso: 100,
+        packagingImageName: "film_pack_provia_100f"
     )
 
     /// Ektachrome 反转片
@@ -98,7 +103,8 @@ extension FilmPreset {
         description: "暖色调，适合人像",
         minZone: 3,
         maxZone: 7,
-        iso: 100
+        iso: 100,
+        packagingImageName: "film_pack_ektachrome"
     )
 }
 

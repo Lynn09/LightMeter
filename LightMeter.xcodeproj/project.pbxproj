@@ -14,6 +14,7 @@
 		36162E827E85FD2CA1E151EC /* ZoneScaleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BFEE8A837DC50B195470871 /* ZoneScaleView.swift */; };
 		362D9786429D4CA90BE09006 /* CameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7E868FA671CF4569B78E76 /* CameraManager.swift */; };
 		396F1D7DEA9946913931E54D /* PointEditMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB8D6E7E7EB93790A14FE8B0 /* PointEditMenuView.swift */; };
+		3CF724B12FC6B06000B415E1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3CF724B02FC6B06000B415E1 /* Assets.xcassets */; };
 		433266275734B8545D853562 /* CameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59A159C394AA47B93E3EA360 /* CameraPreviewView.swift */; };
 		64631C282BDBDD187B04C57F /* MainMeteringView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13E0B369CC2FD3A8F8E43C3 /* MainMeteringView.swift */; };
 		6912CD66DD75B05936D9D755 /* TopToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2590533435D44A142C4D10 /* TopToolbar.swift */; };
@@ -38,6 +39,7 @@
 		05CC5449066C71C1FEB3A67E /* LightMeter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LightMeter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		160944A873C68C8AB79474C6 /* FilmSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmSelectorView.swift; sourceTree = "<group>"; };
 		3BFEE8A837DC50B195470871 /* ZoneScaleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneScaleView.swift; sourceTree = "<group>"; };
+		3CF724B02FC6B06000B415E1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4F4BAB4CD2C382B32711F111 /* LightMeterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightMeterApp.swift; sourceTree = "<group>"; };
 		538367AB8E6535F926279438 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		59A159C394AA47B93E3EA360 /* CameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewView.swift; sourceTree = "<group>"; };
@@ -127,6 +129,7 @@
 		A01057C35C248096046CD8A8 /* LightMeter */ = {
 			isa = PBXGroup;
 			children = (
+				3CF724B02FC6B06000B415E1 /* Assets.xcassets */,
 				538367AB8E6535F926279438 /* Info.plist */,
 				4F4BAB4CD2C382B32711F111 /* LightMeterApp.swift */,
 				1B65D6C48C8825659A6F6CC1 /* Managers */,
@@ -162,6 +165,7 @@
 			buildConfigurationList = C2F164187A0DB389EA44519C /* Build configuration list for PBXNativeTarget "LightMeter" */;
 			buildPhases = (
 				5533F8349B450B600B746FDD /* Sources */,
+				3CF724B22FC6B06000B415E1 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -181,7 +185,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					1F1B09C7A53B6D056F21B656 = {
 						ProvisioningStyle = Automatic;
@@ -206,6 +210,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3CF724B22FC6B06000B415E1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3CF724B12FC6B06000B415E1 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		5533F8349B450B600B746FDD /* Sources */ = {
@@ -246,10 +261,8 @@
 		09313B7806A8F306622A8851 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = J5ZD6MG7TR;
 				INFOPLIST_FILE = LightMeter/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -270,6 +283,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -301,8 +315,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = J5ZD6MG7TR;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -315,6 +331,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
@@ -325,6 +342,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -356,8 +374,10 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = J5ZD6MG7TR;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -377,6 +397,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -386,10 +407,8 @@
 		CB7A654B38D29DA756FAD255 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = J5ZD6MG7TR;
 				INFOPLIST_FILE = LightMeter/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (

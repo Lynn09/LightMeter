@@ -43,7 +43,9 @@ struct MainMeteringView: View {
                     currentFilm: viewModel.selectedFilm,
                     currentEV: viewModel.currentExposure.ev,
                     onFilmButtonTap: {
-                        showingFilmSelector = true
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                            showingFilmSelector = true
+                        }
                     }
                 )
                 .frame(height: Layout.toolbarHeight)
@@ -135,16 +137,9 @@ struct MainMeteringView: View {
 
             // 胶片选择弹窗
             if showingFilmSelector {
-                FilmSelectorView(
-                    selectedFilm: .init(
-                        get: { viewModel.selectedFilm },
-                        set: { _ in }
-                    ),
-                    isPresented: $showingFilmSelector,
-                    onFilmSelected: { film in
-                        viewModel.selectFilm(film)
-                    }
-                )
+                filmSelectorOverlay
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(2)
             }
 
             // 光圈选择弹窗
@@ -199,6 +194,31 @@ struct MainMeteringView: View {
                 )
             }
 
+        }
+    }
+
+    private var filmSelectorOverlay: some View {
+        ZStack(alignment: .top) {
+            Color.black
+                .opacity(0.28)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                        showingFilmSelector = false
+                    }
+                }
+
+            FilmSelectorView(
+                selectedFilm: .init(
+                    get: { viewModel.selectedFilm },
+                    set: { _ in }
+                ),
+                isPresented: $showingFilmSelector,
+                onFilmSelected: { film in
+                    viewModel.selectFilm(film)
+                }
+            )
+            .ignoresSafeArea(edges: .top)
         }
     }
 

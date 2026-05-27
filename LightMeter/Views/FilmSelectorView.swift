@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// 胶片选择弹窗视图
-/// 底部弹窗样式，显示可用的胶片预设列表
+/// 胶片选择抽屉视图
+/// 顶部下拉样式，显示可用的胶片预设列表
 struct FilmSelectorView: View {
 
     // MARK: - Properties
@@ -18,7 +18,7 @@ struct FilmSelectorView: View {
     // MARK: - Constants
 
     private enum Constants {
-        static let sheetHeight: CGFloat = 400
+        static let drawerHeight: CGFloat = 420
         static let cornerRadius: CGFloat = 20
         static let headerHeight: CGFloat = 60
         static let horizontalPadding: CGFloat = 20
@@ -44,9 +44,10 @@ struct FilmSelectorView: View {
             // 胶片选项列表
             filmOptionsList
         }
-        .frame(height: Constants.sheetHeight)
+        .frame(height: Constants.drawerHeight)
         .background(Colors.background)
-        .cornerRadius(Constants.cornerRadius, corners: [.topLeft, .topRight])
+        .cornerRadius(Constants.cornerRadius, corners: [.bottomLeft, .bottomRight])
+        .shadow(color: Color.black.opacity(0.32), radius: 18, x: 0, y: 12)
     }
 
     // MARK: - Subviews
@@ -258,19 +259,15 @@ private struct RoundedCorner: Shape {
             Spacer()
         }
 
-        // 胶片选择弹窗
-        VStack {
-            Spacer()
-
-            FilmSelectorView(
-                selectedFilm: $selectedFilm,
-                isPresented: $isPresented,
-                onFilmSelected: { film in
-                    print("Selected: \(film.name)")
-                }
-            )
-        }
-        .ignoresSafeArea()
+        FilmSelectorView(
+            selectedFilm: $selectedFilm,
+            isPresented: $isPresented,
+            onFilmSelected: { film in
+                print("Selected: \(film.name)")
+            }
+        )
+        .frame(maxHeight: .infinity, alignment: .top)
+        .ignoresSafeArea(edges: .top)
     }
     .preferredColorScheme(.dark)
 }

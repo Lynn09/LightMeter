@@ -198,27 +198,29 @@ struct MainMeteringView: View {
     }
 
     private var filmSelectorOverlay: some View {
-        ZStack(alignment: .top) {
-            Color.black
-                .opacity(0.28)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
-                        showingFilmSelector = false
+        GeometryReader { proxy in
+            ZStack(alignment: .top) {
+                Color.black
+                    .opacity(0.28)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                            showingFilmSelector = false
+                        }
                     }
-                }
 
-            FilmSelectorView(
-                selectedFilm: .init(
-                    get: { viewModel.selectedFilm },
-                    set: { _ in }
-                ),
-                isPresented: $showingFilmSelector,
-                onFilmSelected: { film in
-                    viewModel.selectFilm(film)
-                }
-            )
-            .ignoresSafeArea(edges: .top)
+                FilmSelectorView(
+                    selectedFilm: .init(
+                        get: { viewModel.selectedFilm },
+                        set: { _ in }
+                    ),
+                    isPresented: $showingFilmSelector,
+                    onFilmSelected: { film in
+                        viewModel.selectFilm(film)
+                    }
+                )
+                .padding(.top, proxy.safeAreaInsets.top)
+            }
         }
     }
 

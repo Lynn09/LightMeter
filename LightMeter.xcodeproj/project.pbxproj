@@ -24,6 +24,8 @@
 		8D8EAB2811934F49A1110003 /* MeteringPointLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2711934F49A1110003 /* MeteringPointLayout.swift */; };
 		8D8EAB2A11934F49A1110004 /* CameraPreviewLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2911934F49A1110004 /* CameraPreviewLayout.swift */; };
 		8D8EAB2C11934F49A1110005 /* FocalLengthPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2B11934F49A1110005 /* FocalLengthPreview.swift */; };
+		8D8EAB2E11934F49A1110006 /* MeteringPointDrawerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2D11934F49A1110006 /* MeteringPointDrawerState.swift */; };
+		8D8EAB3011934F49A1110007 /* MeteringPointDrawerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2F11934F49A1110007 /* MeteringPointDrawerView.swift */; };
 		C8F505A44B5D303E05ADB9C4 /* ExposureCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886C6492BD1983B14D2DEC87 /* ExposureCalculator.swift */; };
 		CA7EAEDD44CD59CAF100EA87 /* FilmSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 160944A873C68C8AB79474C6 /* FilmSelectorView.swift */; };
 		E2825F6D9C8BAFD56F68BEDD /* LightMeterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4BAB4CD2C382B32711F111 /* LightMeterApp.swift */; };
@@ -48,6 +50,8 @@
 		8D8EAB2711934F49A1110003 /* MeteringPointLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeteringPointLayout.swift; sourceTree = "<group>"; };
 		8D8EAB2911934F49A1110004 /* CameraPreviewLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewLayout.swift; sourceTree = "<group>"; };
 		8D8EAB2B11934F49A1110005 /* FocalLengthPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocalLengthPreview.swift; sourceTree = "<group>"; };
+		8D8EAB2D11934F49A1110006 /* MeteringPointDrawerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeteringPointDrawerState.swift; sourceTree = "<group>"; };
+		8D8EAB2F11934F49A1110007 /* MeteringPointDrawerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeteringPointDrawerView.swift; sourceTree = "<group>"; };
 		AA2590533435D44A142C4D10 /* TopToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopToolbar.swift; sourceTree = "<group>"; };
 		B03871FEC36F6A79637C221E /* FilmPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmPreset.swift; sourceTree = "<group>"; };
 		B3A302588E3CB176611BDEB9 /* DeviceConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConfiguration.swift; sourceTree = "<group>"; };
@@ -69,6 +73,7 @@
 				FB7F154D4A143F8CB91C3796 /* ExposureInfoView.swift */,
 				160944A873C68C8AB79474C6 /* FilmSelectorView.swift */,
 				D13E0B369CC2FD3A8F8E43C3 /* MainMeteringView.swift */,
+				8D8EAB2F11934F49A1110007 /* MeteringPointDrawerView.swift */,
 				D262005F35717DBBD35502E3 /* MeteringPointView.swift */,
 				DB8D6E7E7EB93790A14FE8B0 /* PointEditMenuView.swift */,
 				7C4A1E4912B94A5B8B7A1001 /* ShutterSelectorView.swift */,
@@ -140,6 +145,7 @@
 				886C6492BD1983B14D2DEC87 /* ExposureCalculator.swift */,
 				B03871FEC36F6A79637C221E /* FilmPreset.swift */,
 				8D8EAB2B11934F49A1110005 /* FocalLengthPreview.swift */,
+				8D8EAB2D11934F49A1110006 /* MeteringPointDrawerState.swift */,
 				8D8EAB2711934F49A1110003 /* MeteringPointLayout.swift */,
 				D44659025A2122CFFF06FC7C /* MeteringPoint.swift */,
 				8D8EAB2511934F49A1110002 /* StaticFramePreviewGeometry.swift */,
@@ -218,6 +224,8 @@
 				E2825F6D9C8BAFD56F68BEDD /* LightMeterApp.swift in Sources */,
 				8D8EAB2A11934F49A1110004 /* CameraPreviewLayout.swift in Sources */,
 				64631C282BDBDD187B04C57F /* MainMeteringView.swift in Sources */,
+				8D8EAB2E11934F49A1110006 /* MeteringPointDrawerState.swift in Sources */,
+				8D8EAB3011934F49A1110007 /* MeteringPointDrawerView.swift in Sources */,
 				8D8EAB2811934F49A1110003 /* MeteringPointLayout.swift in Sources */,
 				6B697BA7CABA9BBD44771C56 /* MeteringPoint.swift in Sources */,
 				247C63D3BA05AA0E0E9706E0 /* MeteringPointView.swift in Sources */,

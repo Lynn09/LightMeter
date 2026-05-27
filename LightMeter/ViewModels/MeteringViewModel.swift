@@ -436,6 +436,7 @@ class MeteringViewModel: ObservableObject {
         )
 
         meteringPoints.append(point)
+        selectedPointId = point.id
         updateExposureParameters()
     }
 
@@ -548,6 +549,12 @@ class MeteringViewModel: ObservableObject {
     func selectPoint(id: UUID) {
         selectedPointId = id
         isPointEditMenuPresented = true
+    }
+
+    /// 选择测光点用于底部抽屉，不打开旧弹窗
+    func selectPointForDrawer(id: UUID) {
+        selectedPointId = id
+        isPointEditMenuPresented = false
     }
 
     /// 关闭编辑菜单

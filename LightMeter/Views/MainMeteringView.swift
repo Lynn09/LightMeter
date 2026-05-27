@@ -17,8 +17,7 @@ struct MainMeteringView: View {
     // MARK: - State
 
     @State private var showingFilmSelector = false
-    @State private var showingPointEditMenu = false
-    @State private var selectedPoint: MeteringPoint?
+    @State private var isMeteringPointDrawerExpanded = false
     @State private var selectedFocalLength: StandardFocalLength = .mm35
 
     // MARK: - Constants
@@ -86,6 +85,27 @@ struct MainMeteringView: View {
                     // 停止相机会话
                     cameraManager.stopSession()
                 }
+
+                // 测光点快速编辑抽屉
+                MeteringPointDrawerView(
+                    points: viewModel.meteringPoints,
+                    selectedPointId: viewModel.selectedPointId,
+                    isExpanded: $isMeteringPointDrawerExpanded,
+                    onSelect: { pointId in
+                        viewModel.selectPointForDrawer(id: pointId)
+                    },
+                    onDelete: { pointId in
+                        viewModel.deleteMeteringPoint(id: pointId)
+                        if viewModel.meteringPoints.isEmpty {
+                            isMeteringPointDrawerExpanded = false
+                        }
+                    },
+                    onRemeter: { point in
+                        remeterPoint(point)
+                    }
+                )
+                .padding(.horizontal, Layout.horizontalPadding)
+                .padding(.top, viewModel.meteringPoints.isEmpty ? 0 : 8)
 
                 // 11区梯度条（快门控制版本）
                 ZoneScaleView(
@@ -179,28 +199,6 @@ struct MainMeteringView: View {
                 )
             }
 
-            // 测光点编辑菜单
-            if showingPointEditMenu,
-               let point = selectedPoint {
-                // 透明遮罩层 - 点击关闭菜单
-                Color.black
-                    .opacity(0.3)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        showingPointEditMenu = false
-                        selectedPoint = nil
-                    }
-
-                PointEditMenuView(
-                    viewModel: viewModel,
-                    point: point,
-                    onDismiss: {
-                        showingPointEditMenu = false
-                        selectedPoint = nil
-                    },
-                    cameraManager: cameraManager
-                )
-            }
         }
     }
 
@@ -221,9 +219,10 @@ struct MainMeteringView: View {
 
     /// 处理测光点点击
     private func handlePointTap(_ point: MeteringPoint) {
-        viewModel.selectPoint(id: point.id)
-        selectedPoint = point
-        showingPointEditMenu = true
+        viewModel.selectPointForDrawer(id: point.id)
+        withAnimation(.spring(response: 0.24, dampingFraction: 0.85)) {
+            isMeteringPointDrawerExpanded = true
+        }
     }
 
     /// 处理静态帧截取/恢复
@@ -248,6 +247,15 @@ struct MainMeteringView: View {
             y: result.normalizedPoint.y,
             brightness: result.brightness
         )
+    }
+
+    /// 在同一归一化坐标上重新采样亮度并更新测光数据
+    private func remeterPoint(_ point: MeteringPoint) {
+        let brightness = cameraManager.getBrightness(
+            at: CGPoint(x: point.x, y: point.y),
+            regionSize: 64
+        )
+        viewModel.remeterPoint(id: point.id, brightness: brightness)
     }
 }
 

@@ -11,7 +11,10 @@ struct MeteringPointLayoutTest {
             containerSize: containerSize
         )
 
-        precondition(topPosition.y >= 20)
+        precondition(MeteringPointLayout.markerSize == 20)
+        precondition(MeteringPointLayout.markerRadius == 10)
+        precondition(MeteringPointLayout.selectedGlowSize == 25)
+        precondition(topPosition.y >= MeteringPointLayout.markerRadius)
 
         let topBadgeOffset = MeteringPointLayout.exposureValueBadgeYOffset(
             normalizedY: 0.0,

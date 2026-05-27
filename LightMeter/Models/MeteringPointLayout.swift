@@ -4,7 +4,11 @@ import CoreGraphics
 
 /// 测光点覆盖层的边界约束规则
 enum MeteringPointLayout {
-    private static let markerRadius: CGFloat = 20
+    static let markerSize: CGFloat = 20
+    static let markerRadius: CGFloat = markerSize / 2
+    static let markerCornerRadius: CGFloat = 3
+    static let selectedGlowSize: CGFloat = 25
+    static let selectedGlowCornerRadius: CGFloat = 4
     private static let topBadgeClearance: CGFloat = 46
 
     static func displayPosition(

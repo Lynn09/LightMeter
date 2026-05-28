@@ -12,6 +12,9 @@ struct TopToolbar: View {
     /// 当前 EV 值
     let currentEV: Double
 
+    /// 胶片选择抽屉是否展开
+    let isFilmSelectorPresented: Bool
+
     /// 胶片选择按钮点击回调
     let onFilmButtonTap: () -> Void
 
@@ -45,8 +48,8 @@ struct TopToolbar: View {
 
             Spacer()
 
-            // 右侧：EV 值显示
-            evDisplay
+            // 右侧：胶片 ISO 和 EV 值显示
+            evAndIsoDisplay
         }
         .frame(height: Constants.height)
         .padding(.horizontal, Constants.horizontalPadding)
@@ -71,24 +74,38 @@ struct TopToolbar: View {
             }
             .padding(.horizontal, Constants.buttonPaddingH)
             .padding(.vertical, Constants.buttonPaddingV)
-            .background(Colors.buttonBackground)
-            .cornerRadius(Constants.buttonCornerRadius)
+            .background(
+                RoundedRectangle(cornerRadius: Constants.buttonCornerRadius)
+                    .fill(isFilmSelectorPresented ? Color.white.opacity(0.16) : Colors.buttonBackground)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Constants.buttonCornerRadius)
+                    .stroke(currentFilm.swiftColor.opacity(isFilmSelectorPresented ? 0.72 : 0), lineWidth: 1)
+            )
         }
         .buttonStyle(PlainButtonStyle())
     }
 
-    /// EV 值显示
-    private var evDisplay: some View {
-        HStack(spacing: 4) {
-            // EV 标签
-            Text("EV:")
-                .font(.system(size: Constants.evLabelSize))
-                .foregroundColor(Colors.textSecondary)
+    /// EV 与固定胶片 ISO 显示
+    private var evAndIsoDisplay: some View {
+        HStack(spacing: 10) {
+            Text("ISO \(currentFilm.iso)")
+                .font(.system(size: Constants.evLabelSize, weight: .semibold, design: .monospaced))
+                .foregroundColor(currentFilm.swiftColor)
 
-            // EV 数值
-            Text(String(format: "%.1f", currentEV))
-                .font(.system(size: Constants.evValueSize, weight: .semibold, design: .monospaced))
-                .foregroundColor(Colors.textPrimary)
+            Rectangle()
+                .fill(Color.white.opacity(0.18))
+                .frame(width: 1, height: 16)
+
+            HStack(spacing: 4) {
+                Text("EV:")
+                    .font(.system(size: Constants.evLabelSize))
+                    .foregroundColor(Colors.textSecondary)
+
+                Text(String(format: "%.1f", currentEV))
+                    .font(.system(size: Constants.evValueSize, weight: .semibold, design: .monospaced))
+                    .foregroundColor(Colors.textPrimary)
+            }
         }
     }
 }
@@ -101,6 +118,7 @@ struct TopToolbar: View {
         TopToolbar(
             currentFilm: .velvia50,
             currentEV: 12.5,
+            isFilmSelectorPresented: false,
             onFilmButtonTap: {}
         )
 
@@ -110,6 +128,7 @@ struct TopToolbar: View {
         TopToolbar(
             currentFilm: .provia100F,
             currentEV: 14.0,
+            isFilmSelectorPresented: true,
             onFilmButtonTap: {}
         )
 
@@ -119,6 +138,7 @@ struct TopToolbar: View {
         TopToolbar(
             currentFilm: .ektachrome,
             currentEV: 11.0,
+            isFilmSelectorPresented: false,
             onFilmButtonTap: {}
         )
 

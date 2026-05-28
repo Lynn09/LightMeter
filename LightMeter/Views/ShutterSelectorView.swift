@@ -1,15 +1,14 @@
 import SwiftUI
 
-/// 快门选择弹窗视图
-/// 底部弹窗样式，显示标准快门速度列表
+/// 快门优先滑动浮层，使用标准快门档位进行快速调整
 struct ShutterSelectorView: View {
 
     // MARK: - Properties
 
-    /// 当前选中的快门速度（nil 表示未锁定）
+    /// 当前锁定的快门速度，nil 表示自动联动
     @Binding var selectedShutterSpeed: Double?
 
-    /// 是否显示弹窗
+    /// 是否显示浮层
     @Binding var isPresented: Bool
 
     /// 快门选择回调
@@ -18,206 +17,236 @@ struct ShutterSelectorView: View {
     // MARK: - Constants
 
     private enum Constants {
-        static let sheetHeight: CGFloat = 520
-        static let cornerRadius: CGFloat = 20
-        static let headerHeight: CGFloat = 60
-        static let horizontalPadding: CGFloat = 20
-        static let optionSpacing: CGFloat = 8
+        static let cornerRadius: CGFloat = 18
+        static let horizontalPadding: CGFloat = 14
+        static let verticalPadding: CGFloat = 12
+        static let lockButtonSize: CGFloat = 44
+        static let overlayMaxWidth: CGFloat = 342
     }
 
     private enum Colors {
-        static let background = Color(hex: "#1C1C1E")!
-        static let optionBackground = Color(hex: "#2C2C2E")!
+        static let background = Color.black.opacity(0.78)
+        static let panelStroke = Color.white.opacity(0.14)
         static let textPrimary = Color.white
         static let textSecondary = Color(hex: "#8E8E93")!
-        static let closeButtonBackground = Color(hex: "#2C2C2E")!
-        static let unlockButtonBackground = Color(hex: "#FF3B3020")!
-        static let unlockButtonText = Color(hex: "#FF3B30")!
+        static let accent = Color(hex: "#007AFF")!
+    }
+
+    private var activeShutterSpeed: Double {
+        selectedShutterSpeed ?? ExposureCalculator.baseShutterSpeed
     }
 
     // MARK: - Body
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    titleRow
 
-            if selectedShutterSpeed != nil {
-                unlockButton
-                    .padding(.horizontal, Constants.horizontalPadding)
-                    .padding(.bottom, 12)
-            }
-
-            shutterOptionsList
-        }
-        .frame(height: Constants.sheetHeight)
-        .background(Colors.background)
-        .cornerRadius(Constants.cornerRadius, corners: [.topLeft, .topRight])
-    }
-
-    // MARK: - Subviews
-
-    private var header: some View {
-        HStack {
-            Text("选择快门")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(Colors.textPrimary)
-
-            Spacer()
-
-            Button(action: { isPresented = false }) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(Colors.textSecondary)
-                    .frame(width: 32, height: 32)
-                    .background(Colors.closeButtonBackground)
-                    .clipShape(Circle())
-            }
-            .buttonStyle(PlainButtonStyle())
-        }
-        .frame(height: Constants.headerHeight)
-        .padding(.horizontal, Constants.horizontalPadding)
-    }
-
-    private var unlockButton: some View {
-        Button(action: unlockShutter) {
-            HStack(spacing: 8) {
-                Image(systemName: "lock.open.fill")
-                    .font(.system(size: 16, weight: .medium))
-                Text("解锁快门")
-                    .font(.system(size: 16, weight: .medium))
-            }
-            .foregroundColor(Colors.unlockButtonText)
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Colors.unlockButtonBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Colors.unlockButtonText.opacity(0.3), lineWidth: 1)
-            )
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-
-    private var shutterOptionsList: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: Constants.optionSpacing) {
-                ForEach(ExposureCalculator.standardShutterSpeeds, id: \.self) { shutterSpeed in
-                    ShutterOptionRow(
-                        shutterSpeed: shutterSpeed,
-                        isSelected: selectedShutterSpeed == shutterSpeed,
-                        onSelect: { selectShutter(shutterSpeed) }
+                    ShutterRulerPicker(
+                        selectedShutterSpeed: activeShutterSpeed,
+                        onSelect: selectShutter
                     )
                 }
+
+                lockPriorityButton
             }
             .padding(.horizontal, Constants.horizontalPadding)
-            .padding(.bottom, 20)
+            .padding(.vertical, Constants.verticalPadding)
+            .background(Colors.background)
+            .clipShape(RoundedRectangle(cornerRadius: Constants.cornerRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: Constants.cornerRadius, style: .continuous)
+                    .stroke(Colors.panelStroke, lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.34), radius: 16, x: 0, y: 10)
+
+            parameterAnchorTriangle
+                .offset(x: 72, y: -1)
+        }
+        .padding(.horizontal, 20)
+        .frame(maxWidth: Constants.overlayMaxWidth)
+    }
+
+    private var titleRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "stopwatch")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(selectedShutterSpeed == nil ? Colors.textSecondary : Colors.accent)
+
+            Text(ExposureCalculator.formatShutterSpeed(activeShutterSpeed))
+                .font(.system(size: 15, weight: .semibold, design: .rounded))
+                .foregroundColor(Colors.textPrimary)
+
+            Text(selectedShutterSpeed == nil ? "自动" : "快门优先")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(selectedShutterSpeed == nil ? Colors.textSecondary : Colors.accent)
+
+            Spacer(minLength: 0)
         }
     }
 
-    // MARK: - Actions
+    private var lockPriorityButton: some View {
+        Button {
+            if selectedShutterSpeed == nil {
+                selectShutter(activeShutterSpeed)
+            } else {
+                selectedShutterSpeed = nil
+                onShutterSelected(nil)
+            }
+        } label: {
+            Image(systemName: selectedShutterSpeed == nil ? "lock.open" : "lock.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundColor(selectedShutterSpeed == nil ? Colors.textSecondary : .white)
+                .frame(width: Constants.lockButtonSize, height: Constants.lockButtonSize)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(selectedShutterSpeed == nil ? Color.white.opacity(0.08) : Colors.accent)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(selectedShutterSpeed == nil ? "锁定快门优先" : "解除快门优先")
+    }
+
+    private var parameterAnchorTriangle: some View {
+        Triangle()
+            .fill(Colors.background)
+            .frame(width: 14, height: 7)
+    }
 
     private func selectShutter(_ shutterSpeed: Double) {
         selectedShutterSpeed = shutterSpeed
         onShutterSelected(shutterSpeed)
     }
-
-    private func unlockShutter() {
-        selectedShutterSpeed = nil
-        onShutterSelected(nil)
-    }
 }
 
-// MARK: - Shutter Option Row
+private struct ShutterRulerPicker: View {
+    let selectedShutterSpeed: Double
+    let onSelect: (Double) -> Void
 
-private struct ShutterOptionRow: View {
-    let shutterSpeed: Double
-    let isSelected: Bool
-    let onSelect: () -> Void
+    private let tickWidth: CGFloat = 42
+    private let tickSpacing: CGFloat = 2
+    @State private var dragOffset: CGFloat = 0
+    @State private var dragStartIndex = 0
+    @State private var isDragging = false
+
+    private var values: [Double] {
+        ExposureCalculator.standardShutterSpeeds
+    }
+
+    private var currentIndex: Int {
+        values.firstIndex(of: selectedShutterSpeed) ?? nearestValueIndex(to: selectedShutterSpeed)
+    }
+
+    private var activeIndex: Int {
+        isDragging ? nearestIndex(for: dragOffset, from: dragStartIndex) : currentIndex
+    }
 
     var body: some View {
-        Button(action: onSelect) {
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? Color(hex: "#007AFF")!.opacity(0.2) : Color(hex: "#3A3A3C")!)
-                        .frame(width: 44, height: 44)
-
-                    Image(systemName: "stopwatch")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(isSelected ? Color(hex: "#007AFF") : .white)
+        GeometryReader { proxy in
+            ZStack {
+                HStack(spacing: tickSpacing) {
+                    ForEach(Array(values.enumerated()), id: \.element) { index, shutterSpeed in
+                        tick(for: shutterSpeed, isSelected: index == activeIndex)
+                    }
                 }
+                .offset(x: rulerOffset(in: proxy.size.width))
+                .animation(.interactiveSpring(response: 0.22, dampingFraction: 0.82), value: activeIndex)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(ExposureCalculator.formatShutterSpeed(shutterSpeed))
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.white)
-
-                    Text(shutterDescription)
-                        .font(.system(size: 13))
-                        .foregroundColor(Color(hex: "#8E8E93")!)
-                }
-
-                Spacer()
-
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 24))
-                        .foregroundColor(Color(hex: "#007AFF")!)
-                }
+                centerSelectionIndicator
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(backgroundColor)
-            .cornerRadius(12)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if !isDragging {
+                            dragStartIndex = currentIndex
+                            isDragging = true
+                        }
+                        dragOffset = value.translation.width
+                        let index = nearestIndex(for: dragOffset, from: dragStartIndex)
+                        let shutterSpeed = values[index]
+                        if shutterSpeed != selectedShutterSpeed {
+                            onSelect(shutterSpeed)
+                        }
+                    }
+                    .onEnded { value in
+                        let index = nearestIndex(for: value.translation.width, from: dragStartIndex)
+                        onSelect(values[index])
+                        dragOffset = 0
+                        isDragging = false
+                    }
+            )
         }
-        .buttonStyle(PlainButtonStyle())
+        .frame(height: 52)
+        .clipped()
     }
 
-    private var backgroundColor: Color {
-        isSelected ? Color(hex: "#007AFF")!.opacity(0.15) : Color(hex: "#2C2C2E")!
+    private var centerSelectionIndicator: some View {
+        VStack(spacing: 3) {
+            Rectangle()
+                .fill(Color(hex: "#007AFF")!)
+                .frame(width: 2, height: 28)
+
+            Circle()
+                .fill(Color(hex: "#007AFF")!)
+                .frame(width: 5, height: 5)
+        }
+        .allowsHitTesting(false)
     }
 
-    private var shutterDescription: String {
-        if shutterSpeed < 1.0 / 1000.0 {
-            return "高速快门 · 凝固动作"
-        } else if shutterSpeed < 1.0 / 125.0 {
-            return "常用手持 · 日间"
-        } else if shutterSpeed < 1.0 / 30.0 {
-            return "慢速手持 · 注意稳定"
-        } else if shutterSpeed < 1.0 {
-            return "慢门 · 建议支撑"
-        } else {
-            return "长曝光 · 建议三脚架"
+    private func rulerOffset(in width: CGFloat) -> CGFloat {
+        let centerOffset = (width - tickWidth) / 2
+        let index = isDragging ? dragStartIndex : currentIndex
+        return centerOffset - CGFloat(index) * stride + dragOffset
+    }
+
+    private var stride: CGFloat {
+        tickWidth + tickSpacing
+    }
+
+    private func nearestIndex(for offset: CGFloat, from startIndex: Int) -> Int {
+        let delta = Int(round(-offset / stride))
+        return min(max(startIndex + delta, 0), values.count - 1)
+    }
+
+    private func nearestValueIndex(to shutterSpeed: Double) -> Int {
+        values.enumerated().min { left, right in
+            abs(left.element - shutterSpeed) < abs(right.element - shutterSpeed)
+        }?.offset ?? 0
+    }
+
+    private func tick(for shutterSpeed: Double, isSelected: Bool) -> some View {
+        VStack(spacing: 5) {
+            Rectangle()
+                .fill(isSelected ? Color.white.opacity(0.9) : Color.white.opacity(0.36))
+                .frame(width: 2, height: isSelected ? 20 : 12)
+
+            Text(ExposureCalculator.formatShutterSpeed(shutterSpeed))
+                .font(.system(size: 10, weight: isSelected ? .bold : .semibold, design: .rounded))
+                .foregroundColor(isSelected ? .white : .white.opacity(0.68))
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
         }
+        .frame(width: tickWidth, height: 48)
     }
 }
 
-// MARK: - Corner Radius Extension
-
-private extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
-    }
-}
-
-private struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-
+private struct Triangle: Shape {
     func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: corners,
-            cornerRadii: CGSize(width: radius, height: radius)
-        )
-        return Path(path.cgPath)
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.closeSubpath()
+        return path
     }
 }
-
-// MARK: - Preview
 
 @available(iOS 17.0, *)
 #Preview("Shutter Selector") {
@@ -235,8 +264,8 @@ private struct RoundedCorner: Shape {
                 isPresented: $isPresented,
                 onShutterSelected: { _ in }
             )
+            .padding(.bottom, 120)
         }
-        .ignoresSafeArea()
     }
     .preferredColorScheme(.dark)
 }

@@ -18,8 +18,8 @@ struct FilmSelectorView: View {
     // MARK: - Constants
 
     private enum Constants {
-        static let drawerHeight: CGFloat = 420
-        static let cornerRadius: CGFloat = 20
+        static let popoverMaxHeight: CGFloat = 420
+        static let cornerRadius: CGFloat = 18
         static let headerHeight: CGFloat = 60
         static let horizontalPadding: CGFloat = 20
         static let optionSpacing: CGFloat = 12
@@ -44,10 +44,14 @@ struct FilmSelectorView: View {
             // 胶片选项列表
             filmOptionsList
         }
-        .frame(height: Constants.drawerHeight)
+        .frame(maxHeight: Constants.popoverMaxHeight)
         .background(Colors.background)
-        .cornerRadius(Constants.cornerRadius, corners: [.bottomLeft, .bottomRight])
+        .clipShape(RoundedRectangle(cornerRadius: Constants.cornerRadius, style: .continuous))
         .shadow(color: Color.black.opacity(0.32), radius: 18, x: 0, y: 12)
+        .overlay(alignment: .topLeading) {
+            filmAnchorTriangle
+                .offset(x: 56, y: -7)
+        }
     }
 
     // MARK: - Subviews
@@ -75,6 +79,12 @@ struct FilmSelectorView: View {
         }
         .frame(height: Constants.headerHeight)
         .padding(.horizontal, Constants.horizontalPadding)
+    }
+
+    private var filmAnchorTriangle: some View {
+        Triangle()
+            .fill(Colors.background)
+            .frame(width: 14, height: 7)
     }
 
     /// 胶片选项列表
@@ -220,25 +230,14 @@ private struct FilmPackagingImageView: View {
     }
 }
 
-// MARK: - Corner Radius Extension
-
-private extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
-    }
-}
-
-private struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-
+private struct Triangle: Shape {
     func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: corners,
-            cornerRadii: CGSize(width: radius, height: radius)
-        )
-        return Path(path.cgPath)
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 

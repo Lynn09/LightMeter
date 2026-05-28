@@ -27,6 +27,12 @@ struct MainMeteringView: View {
         static let zoneScaleHeight: CGFloat = 80
         static let exposureInfoHeight: CGFloat = 80
         static let horizontalPadding: CGFloat = 20
+        static let filmPopoverTopSpacing: CGFloat = 2
+        static let previewControlClearance: CGFloat = 58
+        static let exposureSelectorBottomOffset: CGFloat = 112
+        static let parameterSelectorHorizontalOffset: CGFloat = 56
+        static let parameterSelectorWidth: CGFloat = 342
+        static let parameterSelectorScreenMargin: CGFloat = 12
     }
 
     // MARK: - Body
@@ -42,9 +48,10 @@ struct MainMeteringView: View {
                 TopToolbar(
                     currentFilm: viewModel.selectedFilm,
                     currentEV: viewModel.currentExposure.ev,
+                    isFilmSelectorPresented: showingFilmSelector,
                     onFilmButtonTap: {
                         withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
-                            showingFilmSelector = true
+                            showingFilmSelector.toggle()
                         }
                     }
                 )
@@ -76,6 +83,11 @@ struct MainMeteringView: View {
                     }
                 )
                 .frame(maxHeight: .infinity)
+                .overlay(alignment: .bottom) {
+                    meteringPointDrawerOverlay
+                        .padding(.horizontal, Layout.horizontalPadding)
+                        .padding(.bottom, Layout.previewControlClearance)
+                }
                 .onAppear {
                     // 启动相机会话
                     Task {
@@ -87,27 +99,6 @@ struct MainMeteringView: View {
                     // 停止相机会话
                     cameraManager.stopSession()
                 }
-
-                // 测光点快速编辑抽屉
-                MeteringPointDrawerView(
-                    points: viewModel.meteringPoints,
-                    selectedPointId: viewModel.selectedPointId,
-                    isExpanded: $isMeteringPointDrawerExpanded,
-                    onSelect: { pointId in
-                        viewModel.selectPointForDrawer(id: pointId)
-                    },
-                    onDelete: { pointId in
-                        viewModel.deleteMeteringPoint(id: pointId)
-                        if viewModel.meteringPoints.isEmpty {
-                            isMeteringPointDrawerExpanded = false
-                        }
-                    },
-                    onRemeter: { point in
-                        remeterPoint(point)
-                    }
-                )
-                .padding(.horizontal, Layout.horizontalPadding)
-                .padding(.top, viewModel.meteringPoints.isEmpty ? 0 : 8)
 
                 // 11区梯度条（快门控制版本）
                 ZoneScaleView(
@@ -142,56 +133,11 @@ struct MainMeteringView: View {
                     .zIndex(2)
             }
 
-            // 光圈选择弹窗
-            if viewModel.isApertureSelectorPresented {
-                ApertureSelectorView(
-                    selectedAperture: .init(
-                        get: { viewModel.lockedAperture },
-                        set: { _ in }
-                    ),
-                    isPresented: .init(
-                        get: { viewModel.isApertureSelectorPresented },
-                        set: { newValue in
-                            if !newValue {
-                                viewModel.closeApertureSelector()
-                            }
-                        }
-                    ),
-                    onApertureSelected: { aperture in
-                        if let aperture = aperture {
-                            viewModel.lockAperture(aperture)
-                        } else {
-                            viewModel.unlockAperture()
-                        }
-                        viewModel.closeApertureSelector()
-                    }
-                )
-            }
-
-            // 快门选择弹窗
-            if viewModel.isShutterSelectorPresented {
-                ShutterSelectorView(
-                    selectedShutterSpeed: .init(
-                        get: { viewModel.lockedShutterSpeed },
-                        set: { _ in }
-                    ),
-                    isPresented: .init(
-                        get: { viewModel.isShutterSelectorPresented },
-                        set: { newValue in
-                            if !newValue {
-                                viewModel.closeShutterSelector()
-                            }
-                        }
-                    ),
-                    onShutterSelected: { shutterSpeed in
-                        if let shutterSpeed = shutterSpeed {
-                            viewModel.lockShutterSpeed(shutterSpeed)
-                        } else {
-                            viewModel.unlockShutterSpeed()
-                        }
-                        viewModel.closeShutterSelector()
-                    }
-                )
+            // 光圈/快门滑动浮层
+            if viewModel.isApertureSelectorPresented || viewModel.isShutterSelectorPresented {
+                parameterSelectorOverlay
+                    .transition(.scale(scale: 0.96, anchor: .bottom).combined(with: .opacity))
+                    .zIndex(3)
             }
 
         }
@@ -219,9 +165,110 @@ struct MainMeteringView: View {
                         viewModel.selectFilm(film)
                     }
                 )
-                .padding(.top, proxy.safeAreaInsets.top)
+                .padding(.horizontal, Layout.horizontalPadding)
+                .padding(.top, proxy.safeAreaInsets.top + Layout.toolbarHeight + Layout.filmPopoverTopSpacing)
             }
         }
+    }
+
+    private var meteringPointDrawerOverlay: some View {
+        MeteringPointDrawerView(
+            points: viewModel.meteringPoints,
+            selectedPointId: viewModel.selectedPointId,
+            isExpanded: $isMeteringPointDrawerExpanded,
+            onSelect: { pointId in
+                viewModel.selectPointForDrawer(id: pointId)
+            },
+            onDelete: { pointId in
+                viewModel.deleteMeteringPoint(id: pointId)
+                if viewModel.meteringPoints.isEmpty {
+                    isMeteringPointDrawerExpanded = false
+                }
+            },
+            onRemeter: { point in
+                remeterPoint(point)
+            }
+        )
+        .opacity(viewModel.meteringPoints.isEmpty ? 0 : 1)
+        .allowsHitTesting(!viewModel.meteringPoints.isEmpty)
+    }
+
+    private var parameterSelectorOverlay: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .bottom) {
+                Color.black
+                    .opacity(0.001)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                            viewModel.closeApertureSelector()
+                            viewModel.closeShutterSelector()
+                        }
+                    }
+
+                Group {
+                    if viewModel.isApertureSelectorPresented {
+                        ApertureSelectorView(
+                            selectedAperture: .init(
+                                get: { viewModel.lockedAperture },
+                                set: { _ in }
+                            ),
+                            isPresented: .init(
+                                get: { viewModel.isApertureSelectorPresented },
+                                set: { newValue in
+                                    if !newValue {
+                                        viewModel.closeApertureSelector()
+                                    }
+                                }
+                            ),
+                            onApertureSelected: { aperture in
+                                if let aperture = aperture {
+                                    viewModel.lockAperture(aperture)
+                                } else {
+                                    viewModel.unlockAperture()
+                                }
+                            }
+                        )
+                    } else if viewModel.isShutterSelectorPresented {
+                        ShutterSelectorView(
+                            selectedShutterSpeed: .init(
+                                get: { viewModel.lockedShutterSpeed },
+                                set: { _ in }
+                            ),
+                            isPresented: .init(
+                                get: { viewModel.isShutterSelectorPresented },
+                                set: { newValue in
+                                    if !newValue {
+                                        viewModel.closeShutterSelector()
+                                    }
+                                }
+                            ),
+                            onShutterSelected: { shutterSpeed in
+                                if let shutterSpeed = shutterSpeed {
+                                    viewModel.lockShutterSpeed(shutterSpeed)
+                                } else {
+                                    viewModel.unlockShutterSpeed()
+                                }
+                            }
+                        )
+                    }
+                }
+                .padding(.bottom, Layout.exposureSelectorBottomOffset)
+                .offset(x: parameterSelectorHorizontalOffset(in: proxy.size.width))
+            }
+        }
+    }
+
+    private func parameterSelectorHorizontalOffset(in availableWidth: CGFloat) -> CGFloat {
+        let maxOffset = max((availableWidth - Layout.parameterSelectorWidth) / 2 - Layout.parameterSelectorScreenMargin, 0)
+        let offset = min(Layout.parameterSelectorHorizontalOffset, maxOffset)
+        if viewModel.isApertureSelectorPresented {
+            return -offset
+        }
+        if viewModel.isShutterSelectorPresented {
+            return offset
+        }
+        return 0
     }
 
     // MARK: - Actions

@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - ExposureInfoView
 
-/// 曝光参数栏视图，显示光圈、快门、ISO
+/// 曝光参数栏视图，显示可调整的光圈和快门
 struct ExposureInfoView: View {
     @ObservedObject var viewModel: MeteringViewModel
 
@@ -53,16 +53,6 @@ struct ExposureInfoView: View {
         return viewModel.currentExposure.formattedShutterSpeed
     }
 
-    /// 获取当前要显示的ISO
-    /// 如果有选中的测光点且该点有曝光参数，显示该点的ISO；否则显示全局ISO
-    private var displayISO: String {
-        if let selectedPoint = viewModel.selectedPoint,
-           let params = selectedPoint.exposureParams {
-            return params.formattedISO
-        }
-        return viewModel.currentExposure.formattedISO
-    }
-
     var body: some View {
         VStack(spacing: 4) {
             // 曝光补偿指示器
@@ -85,7 +75,7 @@ struct ExposureInfoView: View {
                     .fill(Color.white.opacity(0.05))
             )
 
-            // 光圈、快门、ISO
+            // 光圈、快门
             HStack(spacing: 0) {
                 // 光圈（可点击）
                 apertureParameterItem
@@ -95,16 +85,6 @@ struct ExposureInfoView: View {
 
                 // 快门（可点击）
                 shutterParameterItem
-
-                Divider()
-                    .background(Color.white.opacity(0.2))
-
-                // ISO - 显示选中测光点的独立ISO或全局ISO
-                parameterItem(
-                    label: "ISO",
-                    value: displayISO,
-                    icon: "film"
-                )
             }
             .frame(height: 70)
             .padding(.horizontal, 16)
@@ -134,7 +114,9 @@ struct ExposureInfoView: View {
 
     private var apertureParameterItem: some View {
         Button(action: {
-            viewModel.toggleApertureSelector()
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                viewModel.toggleApertureSelector()
+            }
         }) {
             VStack(spacing: 4) {
                 HStack(spacing: 4) {
@@ -176,7 +158,9 @@ struct ExposureInfoView: View {
 
     private var shutterParameterItem: some View {
         Button(action: {
-            viewModel.toggleShutterSelector()
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+                viewModel.toggleShutterSelector()
+            }
         }) {
             VStack(spacing: 4) {
                 HStack(spacing: 4) {
@@ -212,22 +196,4 @@ struct ExposureInfoView: View {
         .buttonStyle(PlainButtonStyle())
     }
 
-    private func parameterItem(label: String, value: String, icon: String) -> some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 10))
-                    .foregroundColor(.gray)
-                Text(label)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.gray)
-            }
-
-            Text(value)
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundColor(.white)
-                .minimumScaleFactor(0.8)
-        }
-        .frame(maxWidth: .infinity)
-    }
 }

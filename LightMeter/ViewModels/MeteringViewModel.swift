@@ -175,6 +175,9 @@ class MeteringViewModel: ObservableObject {
     /// 切换光圈选择器显示状态
     func toggleApertureSelector() {
         isApertureSelectorPresented.toggle()
+        if isApertureSelectorPresented {
+            isShutterSelectorPresented = false
+        }
     }
 
     /// 关闭光圈选择器
@@ -219,6 +222,9 @@ class MeteringViewModel: ObservableObject {
     /// 切换快门选择器显示状态
     func toggleShutterSelector() {
         isShutterSelectorPresented.toggle()
+        if isShutterSelectorPresented {
+            isApertureSelectorPresented = false
+        }
     }
 
     /// 关闭快门选择器

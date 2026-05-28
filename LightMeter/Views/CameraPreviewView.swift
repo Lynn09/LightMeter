@@ -46,6 +46,14 @@ struct CameraPreviewView: View {
 
     @State private var isFocalLengthDrawerExpanded = false
 
+    private enum Layout {
+        static let centerControlWidth: CGFloat = 58
+        static let controlHeight: CGFloat = 34
+        static let controlSpacing: CGFloat = 8
+        static let horizontalPadding: CGFloat = 12
+        static let bottomPadding: CGFloat = 14
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -67,12 +75,8 @@ struct CameraPreviewView: View {
                 // 测光点标记覆盖层
                 meteringPointsOverlay(in: contentSize)
 
-                // 焦段选择控制
-                focalLengthControls
-                    .zIndex(20)
-
-                // 静态帧控制始终置顶，避免冻结帧后无法恢复
-                staticFrameControls
+                // 取景控制条始终置顶，避免冻结帧后无法恢复
+                previewControlBar
                     .zIndex(30)
             }
             .frame(width: contentSize.width, height: contentSize.height)
@@ -99,109 +103,172 @@ struct CameraPreviewView: View {
         .frame(width: contentSize.width, height: contentSize.height)
     }
 
-    /// 静态帧控制按钮
-    private var staticFrameControls: some View {
+    /// 取景控制条：静帧、主体测光和焦段选择
+    private var previewControlBar: some View {
         VStack {
             Spacer(minLength: 0)
-            HStack(spacing: 12) {
-                Button(action: onFreezeToggle) {
-                    Image(systemName: isFrameFrozen ? "play.fill" : "pause.fill")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
-                        .frame(width: 42, height: 34)
-                        .background(
-                            Capsule()
-                                .fill(Color.black.opacity(0.68))
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(Color.white.opacity(0.18), lineWidth: 1)
-                        )
-                }
-                .buttonStyle(PlainButtonStyle())
 
-                if isFrameFrozen {
-                    Button(action: onSubjectMetering) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "scope")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text("主体测光")
-                                .font(.system(size: 13, weight: .semibold))
-                        }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .frame(height: 34)
-                        .background(
-                            Capsule()
-                                .fill(Color(hex: "#007AFF")!.opacity(0.88))
-                        )
-                    }
-                    .buttonStyle(PlainButtonStyle())
+            VStack(spacing: 8) {
+                if isFocalLengthDrawerExpanded {
+                    focalLengthOptionsOverlay
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
+
+                previewControlSlots
             }
-            .padding(.bottom, 14)
+            .padding(.horizontal, Layout.horizontalPadding)
+            .padding(.bottom, Layout.bottomPadding)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .allowsHitTesting(true)
     }
 
-    /// 焦段显示和标准定焦选择
-    private var focalLengthControls: some View {
-        VStack(alignment: .leading, spacing: 6) {
+    private var previewControlSlots: some View {
+        ZStack {
+            HStack(spacing: Layout.controlSpacing) {
+                focalLengthToggleButton
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+
+                Color.clear
+                    .frame(width: Layout.centerControlWidth, height: Layout.controlHeight)
+
+                Group {
+                    if isFrameFrozen {
+                        subjectMeteringButton
+                    } else {
+                        Color.clear
+                            .frame(height: Layout.controlHeight)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            freezeButton
+                .frame(width: Layout.centerControlWidth)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var freezeButton: some View {
+        Button(action: onFreezeToggle) {
+            Image(systemName: isFrameFrozen ? "play.fill" : "pause.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(width: 42, height: Layout.controlHeight)
+                .background(
+                    Capsule()
+                        .fill(Color.black.opacity(0.68))
+                )
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private var focalLengthToggleButton: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                isFocalLengthDrawerExpanded.toggle()
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Text(selectedFocalLength.displayLabel)
+                    .font(.system(size: 12, weight: .semibold))
+
+                Image(systemName: isFocalLengthDrawerExpanded ? "chevron.down" : "chevron.up")
+                    .font(.system(size: 10, weight: .bold))
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 11)
+            .frame(height: Layout.controlHeight)
+            .background(
+                Capsule()
+                    .fill(isFocalLengthDrawerExpanded ? Color.white.opacity(0.18) : Color.black.opacity(0.68))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.16), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private var subjectMeteringButton: some View {
+        Button(action: onSubjectMetering) {
             HStack(spacing: 6) {
-                ForEach(
-                    FocalLengthDrawerPresentation.visibleFocalLengths(
-                        isExpanded: isFocalLengthDrawerExpanded,
-                        selectedFocalLength: selectedFocalLength
-                    )
-                ) { focalLength in
-                    Button {
-                        if isFocalLengthDrawerExpanded {
+                Image(systemName: "scope")
+                    .font(.system(size: 14, weight: .semibold))
+                Text("主体测光")
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .frame(height: Layout.controlHeight)
+            .background(
+                Capsule()
+                    .fill(Color(hex: "#007AFF")!.opacity(0.88))
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    /// 标准定焦选择浮层，展示在取景控制条上方
+    private var focalLengthOptionsOverlay: some View {
+        VStack(spacing: 0) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(StandardFocalLength.allCases) { focalLength in
+                        Button {
                             onFocalLengthSelected(focalLength)
                             withAnimation(.easeInOut(duration: 0.18)) {
                                 isFocalLengthDrawerExpanded = false
                             }
-                        } else {
-                            withAnimation(.easeInOut(duration: 0.18)) {
-                                isFocalLengthDrawerExpanded = true
-                            }
+                        } label: {
+                            focalLengthOptionLabel(for: focalLength)
                         }
-                    } label: {
-                        focalLengthButtonLabel(for: focalLength)
+                        .buttonStyle(PlainButtonStyle())
                     }
-                    .buttonStyle(PlainButtonStyle())
                 }
+                .padding(.horizontal, 8)
             }
+            .frame(maxWidth: 330)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.black.opacity(0.72))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(Color.white.opacity(0.14), lineWidth: 1)
+            )
 
-            Spacer(minLength: 0)
+            popoverAnchorTriangle
+                .offset(x: -52)
         }
-        .padding(.top, 12)
-        .padding(.leading, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .allowsHitTesting(true)
     }
 
-    private func focalLengthButtonLabel(for focalLength: StandardFocalLength) -> some View {
-        HStack(spacing: 4) {
-            Text(focalLength.displayLabel)
-                .font(.system(size: 12, weight: .semibold))
+    private var popoverAnchorTriangle: some View {
+        Triangle()
+            .fill(Color.black.opacity(0.72))
+            .frame(width: 14, height: 7)
+    }
 
-            if !isFocalLengthDrawerExpanded {
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 10, weight: .bold))
-            }
-        }
-        .foregroundColor(selectedFocalLength == focalLength ? .black : .white)
-        .padding(.horizontal, isFocalLengthDrawerExpanded ? 10 : 11)
-        .frame(height: 30)
-        .background(
-            Capsule()
-                .fill(selectedFocalLength == focalLength ? Color.white : Color.black.opacity(0.62))
-        )
-        .overlay(
-            Capsule()
-                .stroke(Color.white.opacity(0.18), lineWidth: 1)
-        )
+    private func focalLengthOptionLabel(for focalLength: StandardFocalLength) -> some View {
+        Text(focalLength.displayLabel)
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundColor(selectedFocalLength == focalLength ? .black : .white)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
+            .background(
+                Capsule()
+                    .fill(selectedFocalLength == focalLength ? Color.white : Color.white.opacity(0.08))
+            )
+            .overlay(
+                Capsule()
+                    .stroke(Color.white.opacity(0.14), lineWidth: 1)
+            )
     }
 
     /// 测光点覆盖层
@@ -216,6 +283,17 @@ struct CameraPreviewView: View {
                 }
             )
         }
+    }
+}
+
+private struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.closeSubpath()
+        return path
     }
 }
 

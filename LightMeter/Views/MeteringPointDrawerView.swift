@@ -30,12 +30,13 @@ struct MeteringPointDrawerView: View {
             .padding(.vertical, 8)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.white.opacity(0.06))
+                    .fill(Color.black.opacity(0.72))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(Color.white.opacity(0.12), lineWidth: 1)
             )
+            .shadow(color: Color.black.opacity(0.28), radius: 12, x: 0, y: 6)
         }
     }
 

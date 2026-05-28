@@ -9,6 +9,8 @@ struct PreviewControlBarSourceTest {
         )
 
         precondition(source.contains("previewControlBar"))
+        precondition(source.contains("let showsPreviewControls: Bool"))
+        precondition(source.contains("if showsPreviewControls"))
         precondition(source.contains("focalLengthOptionsOverlay"))
         precondition(source.contains("freezeButton"))
         precondition(source.contains("focalLengthToggleButton"))

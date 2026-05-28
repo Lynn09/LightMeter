@@ -12,8 +12,14 @@ struct TopToolbar: View {
     /// 当前 EV 值
     let currentEV: Double
 
+    /// 当前校准状态
+    let calibrationStatus: String
+
     /// 胶片选择抽屉是否展开
     let isFilmSelectorPresented: Bool
+
+    /// 设置按钮点击回调
+    let onSettingsButtonTap: () -> Void
 
     /// 胶片选择按钮点击回调
     let onFilmButtonTap: () -> Void
@@ -29,11 +35,13 @@ struct TopToolbar: View {
         static let filmIconSize: CGFloat = 20
         static let evLabelSize: CGFloat = 13
         static let evValueSize: CGFloat = 20
+        static let statusWidth: CGFloat = 144
+        static let settingsWidth: CGFloat = 48
+        static let filmButtonMaxWidth: CGFloat = 136
     }
 
     private enum Colors {
         static let background = Color.black
-        static let buttonBackground = Color(hex: "#1C1C1E")!
         static let textPrimary = Color.white
         static let textSecondary = Color(hex: "#8E8E93")!
         static let filmIcon = Color(hex: "#007AFF")!
@@ -42,14 +50,19 @@ struct TopToolbar: View {
     // MARK: - Body
 
     var body: some View {
-        HStack(spacing: 0) {
-            // 左侧：胶片选择按钮
+        ZStack {
+            HStack(spacing: 0) {
+                settingsButton
+                    .frame(width: Constants.settingsWidth, alignment: .leading)
+
+                Spacer()
+
+                evAndIsoDisplay
+                    .frame(width: Constants.statusWidth, alignment: .trailing)
+            }
+
             filmButton
-
-            Spacer()
-
-            // 右侧：胶片 ISO 和 EV 值显示
-            evAndIsoDisplay
+                .frame(maxWidth: .infinity, alignment: .center)
         }
         .frame(height: Constants.height)
         .padding(.horizontal, Constants.horizontalPadding)
@@ -58,7 +71,19 @@ struct TopToolbar: View {
 
     // MARK: - Subviews
 
-    /// 胶片选择按钮
+    private var settingsButton: some View {
+        Button(action: onSettingsButtonTap) {
+            Image(systemName: "gearshape")
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundColor(Colors.textPrimary)
+                .frame(width: 40, height: 40)
+                .background(Color.clear)
+                .overlay(activeHighlight(isActive: false, color: Colors.textPrimary))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Settings")
+    }
+
     private var filmButton: some View {
         Button(action: onFilmButtonTap) {
             HStack(spacing: 8) {
@@ -74,38 +99,47 @@ struct TopToolbar: View {
             }
             .padding(.horizontal, Constants.buttonPaddingH)
             .padding(.vertical, Constants.buttonPaddingV)
-            .background(
-                RoundedRectangle(cornerRadius: Constants.buttonCornerRadius)
-                    .fill(isFilmSelectorPresented ? Color.white.opacity(0.16) : Colors.buttonBackground)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Constants.buttonCornerRadius)
-                    .stroke(currentFilm.swiftColor.opacity(isFilmSelectorPresented ? 0.72 : 0), lineWidth: 1)
-            )
+            .frame(maxWidth: Constants.filmButtonMaxWidth)
+            .background(Color.clear)
+            .overlay(activeHighlight(isActive: isFilmSelectorPresented, color: currentFilm.swiftColor))
+            .contentShape(Rectangle())
         }
         .buttonStyle(PlainButtonStyle())
     }
 
     /// EV 与固定胶片 ISO 显示
     private var evAndIsoDisplay: some View {
-        HStack(spacing: 10) {
-            Text("ISO \(currentFilm.iso)")
-                .font(.system(size: Constants.evLabelSize, weight: .semibold, design: .monospaced))
-                .foregroundColor(currentFilm.swiftColor)
+        VStack(alignment: .trailing, spacing: 2) {
+            HStack(spacing: 8) {
+                Text("ISO \(currentFilm.iso)")
+                    .font(.system(size: Constants.evLabelSize, weight: .semibold, design: .monospaced))
+                    .foregroundColor(currentFilm.swiftColor)
 
-            Rectangle()
-                .fill(Color.white.opacity(0.18))
-                .frame(width: 1, height: 16)
+                HStack(spacing: 4) {
+                    Text("EV:")
+                        .font(.system(size: Constants.evLabelSize))
+                        .foregroundColor(Colors.textSecondary)
 
-            HStack(spacing: 4) {
-                Text("EV:")
-                    .font(.system(size: Constants.evLabelSize))
-                    .foregroundColor(Colors.textSecondary)
-
-                Text(String(format: "%.1f", currentEV))
-                    .font(.system(size: Constants.evValueSize, weight: .semibold, design: .monospaced))
-                    .foregroundColor(Colors.textPrimary)
+                    Text(String(format: "%.1f", currentEV))
+                        .font(.system(size: 18, weight: .semibold, design: .monospaced))
+                        .foregroundColor(Colors.textPrimary)
+                }
             }
+
+            Text(calibrationStatus)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(Colors.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+    }
+
+    private func activeHighlight(isActive: Bool, color: Color) -> some View {
+        VStack(spacing: 0) {
+            Spacer()
+            Capsule()
+                .fill(color.opacity(isActive ? 0.88 : 0))
+                .frame(width: isActive ? 22 : 0, height: 2)
         }
     }
 }
@@ -118,7 +152,9 @@ struct TopToolbar: View {
         TopToolbar(
             currentFilm: .velvia50,
             currentEV: 12.5,
+            calibrationStatus: "Uncalibrated",
             isFilmSelectorPresented: false,
+            onSettingsButtonTap: {},
             onFilmButtonTap: {}
         )
 
@@ -128,7 +164,9 @@ struct TopToolbar: View {
         TopToolbar(
             currentFilm: .provia100F,
             currentEV: 14.0,
+            calibrationStatus: "Standard +0.1 EV",
             isFilmSelectorPresented: true,
+            onSettingsButtonTap: {},
             onFilmButtonTap: {}
         )
 
@@ -138,7 +176,9 @@ struct TopToolbar: View {
         TopToolbar(
             currentFilm: .ektachrome,
             currentEV: 11.0,
+            calibrationStatus: "Professional -0.2 EV",
             isFilmSelectorPresented: false,
+            onSettingsButtonTap: {},
             onFilmButtonTap: {}
         )
 

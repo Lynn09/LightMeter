@@ -31,6 +31,20 @@ class MeteringViewModel: ObservableObject {
 
     @Published var selectedFilm: FilmPreset = .provia100F
 
+    // MARK: - 测光校准
+
+    @Published var activeNativeLensInfo: NativeLensInfo?
+
+    private let calibrationStore: MeteringCalibrationStore
+
+    var activeCalibration: LensCalibration? {
+        calibrationStore.activeCalibration(for: activeNativeLensInfo?.key)
+    }
+
+    var calibrationStatusLabel: String {
+        activeCalibration?.statusLabel ?? "Uncalibrated"
+    }
+
     // MARK: - 测光点
 
     @Published var meteringPoints: [MeteringPoint] = []
@@ -95,10 +109,88 @@ class MeteringViewModel: ObservableObject {
         return meteringPoints.first { $0.id == id }
     }
 
+    private var averageMeteredEV: Double? {
+        guard !meteringPoints.isEmpty else { return nil }
+        let total = meteringPoints.map(\.ev).reduce(0, +)
+        return total / Double(meteringPoints.count)
+    }
+
     // MARK: - 初始化
 
-    init() {
+    init(calibrationStore: MeteringCalibrationStore = MeteringCalibrationStore()) {
+        self.calibrationStore = calibrationStore
         // 初始化时计算一次曝光参数
+        updateExposureParameters()
+    }
+
+    func updateNativeLensInfo(_ lensInfo: NativeLensInfo?) {
+        activeNativeLensInfo = lensInfo
+        refreshMeteringPointExposureParams()
+        updateExposureParameters()
+    }
+
+    func saveCalibration(
+        level: CalibrationLevel,
+        evOffset: Double,
+        referenceBrightness: Double,
+        sampleCount: Int
+    ) -> Bool {
+        guard let nativeLensKey = activeNativeLensInfo?.key,
+              evOffset.isFinite,
+              MeteringCalibrationMath.isValidBrightness(referenceBrightness) else {
+            return false
+        }
+
+        let calibration = LensCalibration(
+            nativeLensKey: nativeLensKey,
+            level: level,
+            evOffset: evOffset,
+            referenceBrightness: referenceBrightness,
+            sampleCount: sampleCount,
+            createdAt: Date(),
+            deviceModel: currentDeviceModelName,
+            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1"
+        )
+        calibrationStore.save(calibration)
+        refreshMeteringPointExposureParams()
+        updateExposureParameters()
+        return true
+    }
+
+    func saveProfessionalCalibration(
+        referenceEV: Double,
+        cameraReferenceEV: Double,
+        measuredBrightness: Double
+    ) -> Bool {
+        let offset = MeteringCalibrationMath.offset(referenceEV: referenceEV, measuredEV: cameraReferenceEV)
+        return saveCalibration(
+            level: .professional,
+            evOffset: offset,
+            referenceBrightness: MeteringCalibrationMath.normalizedBrightness(measuredBrightness),
+            sampleCount: 1
+        )
+    }
+
+    func saveCalibration(level: CalibrationLevel, samples: [CalibrationSample]) -> Bool {
+        guard let referenceBrightness = MeteringCalibrationMath.averageBrightness(from: samples) else { return false }
+        return saveCalibration(
+            level: level,
+            evOffset: 0,
+            referenceBrightness: referenceBrightness,
+            sampleCount: samples.count
+        )
+    }
+
+    func resetCalibrationForCurrentLens() {
+        guard let key = activeNativeLensInfo?.key else { return }
+        calibrationStore.reset(nativeLensKey: key)
+        refreshMeteringPointExposureParams()
+        updateExposureParameters()
+    }
+
+    func resetAllCalibrations() {
+        calibrationStore.resetAll()
+        refreshMeteringPointExposureParams()
         updateExposureParameters()
     }
 
@@ -328,58 +420,41 @@ class MeteringViewModel: ObservableObject {
 
     /// 根据快门偏移重新计算曝光参数，快门速度始终为标准档位
     private func recalculateExposureWithShutterOffset() {
-        let zones = meteringPoints.map { $0.zone }
-
         // 如果没有测光点，使用默认参数
-        guard !zones.isEmpty else {
+        guard let meteredEV = averageMeteredEV else {
             currentExposure = calculateDefaultExposureWithShutterOffset()
             return
         }
-
-        // 计算平均Zone和基础EV
-        let avgZone = Double(zones.reduce(0, +)) / Double(zones.count)
-        let baseEV = ExposureCalculator.referenceEV + (avgZone - 5.0)
 
         // 计算有效的总偏移量（已应用的偏移 + 拖动中的临时偏移）
         let effectiveOffset = shutterSpeedOffset + dragShutterOffset
 
         // 应用快门偏移后的EV
         // 快门提高(+offset) = 进光减少 = EV降低
-        let adjustedEV = baseEV - effectiveOffset
+        let adjustedEV = meteredEV - effectiveOffset
 
         // 计算光圈和快门
         let aperture: Double
         let finalShutterSpeed: Double
 
         if let lockedAperture = lockedAperture {
-            // 光圈锁定模式
-            aperture = lockedAperture
-
-            // 根据锁定的光圈和EV差重新计算快门
-            let evDiffFromBase = log2(pow(lockedAperture / ExposureCalculator.baseAperture, 2))
-            let targetShutter = baseShutterSpeed * pow(2, evDiffFromBase - (adjustedEV - ExposureCalculator.referenceEV))
-
-            // 吸附到标准档位
-            finalShutterSpeed = nearestStandardShutterSpeed(targetShutter)
-        } else {
-            // 自动模式：使用吸附后的快门速度，根据EV计算光圈
-            // 快门速度基于偏移量计算并吸附到标准档位
-            // 使用有效的总偏移量（已应用 + 拖动中）
-            let rawShutterSpeed = baseShutterSpeed / pow(2, effectiveOffset)
-            finalShutterSpeed = nearestStandardShutterSpeed(rawShutterSpeed)
-
-            // 根据快门和EV计算光圈
-            // EV = log2(aperture^2 / shutter) + log2(ISO/100) + 10
-            // 简化：aperture = sqrt(2^(EV - log2(ISO/100) - 10 + log2(shutter)))
-            let isoAdjustment = log2(Double(selectedFilm.iso) / 100.0)
-            let evDiff = adjustedEV - ExposureCalculator.referenceEV
-            let adjustedEVDiff = evDiff - isoAdjustment
-            let stops = adjustedEVDiff / 2.0
-            let rawAperture = ExposureCalculator.calculateAperture(
-                baseAperture: ExposureCalculator.baseAperture,
-                stops: stops
+            let result = ExposureCalculator.calculateCoupledExposure(
+                ev: adjustedEV,
+                iso: selectedFilm.iso,
+                lockedAperture: lockedAperture,
+                lockedShutterSpeed: nil
             )
-            aperture = ExposureCalculator.nearestStandardAperture(rawAperture)
+            aperture = result.aperture
+            finalShutterSpeed = result.shutterSpeed
+        } else {
+            let rawShutterSpeed = baseShutterSpeed / pow(2, effectiveOffset)
+            let result = ExposureCalculator.calculateAutoExposure(
+                ev: adjustedEV,
+                iso: selectedFilm.iso,
+                preferredShutterSpeed: rawShutterSpeed
+            )
+            aperture = result.aperture
+            finalShutterSpeed = result.shutterSpeed
         }
 
         currentExposure = ExposureResult(
@@ -419,12 +494,18 @@ class MeteringViewModel: ObservableObject {
     // MARK: - 测光点管理
 
     /// 添加测光点
-    func addMeteringPoint(x: Double, y: Double, brightness: Double = 0.5) {
+    func addMeteringPoint(
+        x: Double,
+        y: Double,
+        brightness: Double = 0.5,
+        cameraReferenceEV: Double? = nil
+    ) {
         guard canAddMeteringPoint else { return }
 
         let color = MeteringPoint.nextColor(for: meteringPoints.count)
-        let ev = ExposureCalculator.brightnessToEV(brightness: brightness)
-        let zone = ExposureCalculator.evToZone(ev: ev)
+        let ev = calibratedEV(for: brightness, cameraReferenceEV: cameraReferenceEV)
+        let zoneReferenceEV = averageMeteredEV ?? ev
+        let zone = ExposureCalculator.evToZone(ev: ev, referenceEV: zoneReferenceEV)
 
         // 始终为该点计算独立的曝光参数
         let exposureParams = calculateExposureParamsForPoint(
@@ -443,6 +524,7 @@ class MeteringViewModel: ObservableObject {
 
         meteringPoints.append(point)
         selectedPointId = point.id
+        refreshMeteringPointZones()
         updateExposureParameters()
     }
 
@@ -532,19 +614,22 @@ class MeteringViewModel: ObservableObject {
     }
 
     /// 重新测光（更新 EV 和 Zone）
-    func remeterPoint(id: UUID, brightness: Double) {
+    func remeterPoint(id: UUID, brightness: Double, cameraReferenceEV: Double? = nil) {
         guard let index = meteringPoints.firstIndex(where: { $0.id == id }) else { return }
 
-        let ev = ExposureCalculator.brightnessToEV(brightness: brightness)
-        let zone = ExposureCalculator.evToZone(ev: ev)
+        let ev = calibratedEV(for: brightness, cameraReferenceEV: cameraReferenceEV)
+        let zoneReferenceEV = averageMeteredEV ?? ev
+        let zone = ExposureCalculator.evToZone(ev: ev, referenceEV: zoneReferenceEV)
 
         meteringPoints[index].ev = ev
         meteringPoints[index].zone = zone
+        refreshMeteringPointZones()
 
         // 始终更新测光点的独立曝光参数
+        let updatedPoint = meteringPoints[index]
         let exposureParams = calculateExposureParamsForPoint(
-            zone: zone,
-            ev: ev
+            zone: updatedPoint.zone,
+            ev: updatedPoint.ev
         )
         meteringPoints[index].exposureParams = exposureParams
 
@@ -573,6 +658,7 @@ class MeteringViewModel: ObservableObject {
 
     /// 更新曝光参数
     private func updateExposureParameters() {
+        refreshMeteringPointZones()
         let zones = meteringPoints.map { $0.zone }
 
         // 如果没有测光点，使用默认参数
@@ -580,12 +666,14 @@ class MeteringViewModel: ObservableObject {
             currentExposure = ExposureResult.default
             return
         }
+        guard let meteredEV = averageMeteredEV else {
+            currentExposure = ExposureResult.default
+            return
+        }
 
         if lockedAperture != nil || lockedShutterSpeed != nil {
-            let averageZone = Double(zones.reduce(0, +)) / Double(zones.count)
-            let averageEV = ExposureCalculator.referenceEV + (averageZone - 5.0)
             let result = ExposureCalculator.calculateCoupledExposure(
-                ev: averageEV,
+                ev: meteredEV,
                 iso: selectedFilm.iso,
                 lockedAperture: lockedAperture,
                 lockedShutterSpeed: lockedShutterSpeed
@@ -595,7 +683,7 @@ class MeteringViewModel: ObservableObject {
                 aperture: result.aperture,
                 shutterSpeed: result.shutterSpeed,
                 iso: result.iso,
-                ev: result.ev,
+                ev: meteredEV,
                 adjustment: 0,
                 compensation: 0
             )
@@ -610,16 +698,50 @@ class MeteringViewModel: ObservableObject {
                 iso: selectedFilm.iso,
                 manualCompensation: manualCompensation
             )
+            let exposureEV = meteredEV - result.adjustment
+            let autoExposure = ExposureCalculator.calculateAutoExposure(
+                ev: exposureEV,
+                iso: selectedFilm.iso
+            )
 
             currentExposure = ExposureResult(
-                aperture: result.aperture,
-                shutterSpeed: result.shutterSpeed,
+                aperture: autoExposure.aperture,
+                shutterSpeed: autoExposure.shutterSpeed,
                 iso: result.iso,
-                ev: result.ev,
+                ev: meteredEV,
                 adjustment: result.adjustment,
                 compensation: isManualExposure ? manualExposureOffset : 0
             )
         }
+    }
+
+    private func refreshMeteringPointZones() {
+        guard let zoneReferenceEV = averageMeteredEV else { return }
+
+        for index in meteringPoints.indices {
+            let point = meteringPoints[index]
+            meteringPoints[index].zone = ExposureCalculator.evToZone(ev: point.ev, referenceEV: zoneReferenceEV)
+        }
+    }
+
+    private func calibratedEV(for brightness: Double, cameraReferenceEV: Double?) -> Double {
+        guard let cameraReferenceEV else {
+            return ExposureCalculator.brightnessToEV(brightness: brightness) + (activeCalibration?.evOffset ?? 0)
+        }
+
+        return MeteringCalibrationMath.sceneEV(
+            pointBrightness: brightness,
+            cameraReferenceEV: cameraReferenceEV,
+            calibration: activeCalibration
+        )
+    }
+
+    private var currentDeviceModelName: String {
+        #if os(iOS)
+        UIDevice.current.model
+        #else
+        "Unknown"
+        #endif
     }
 }
 

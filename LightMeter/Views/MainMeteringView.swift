@@ -17,8 +17,13 @@ struct MainMeteringView: View {
     // MARK: - State
 
     @State private var showingFilmSelector = false
+    @State private var showingSettings = false
     @State private var isMeteringPointDrawerExpanded = false
     @State private var selectedFocalLength: StandardFocalLength = .mm35
+    @State private var activeCalibrationMode: CalibrationCaptureMode?
+    @State private var professionalReferenceEV: Double?
+    @State private var calibrationSamples: [CalibrationSample] = []
+    @State private var calibrationMessage: String?
 
     // MARK: - Constants
 
@@ -39,108 +44,151 @@ struct MainMeteringView: View {
 
     var body: some View {
         ZStack {
-            // 背景
             Color.black.ignoresSafeArea()
 
-            // 主要内容
-            VStack(spacing: 0) {
-                // 顶部工具栏
-                TopToolbar(
-                    currentFilm: viewModel.selectedFilm,
-                    currentEV: viewModel.currentExposure.ev,
-                    isFilmSelectorPresented: showingFilmSelector,
-                    onFilmButtonTap: {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
-                            showingFilmSelector.toggle()
-                        }
-                    }
-                )
-                .frame(height: Layout.toolbarHeight)
-
-                // 相机预览区域（真实相机）
-                CameraPreviewView(
-                    session: cameraManager.session,
-                    meteringPoints: viewModel.meteringPoints,
-                    selectedPointId: viewModel.selectedPointId,
-                    frozenFrameImage: cameraManager.frozenFrameImage,
-                    isFrameFrozen: cameraManager.isFrameFrozen,
-                    selectedFocalLength: selectedFocalLength,
-                    onTap: { location in
-                        handlePreviewTap(at: location)
-                    },
-                    onPointTap: { point in
-                        handlePointTap(point)
-                    },
-                    onFreezeToggle: {
-                        handleStaticFrameToggle()
-                    },
-                    onSubjectMetering: {
-                        handleSubjectMetering()
-                    },
-                    onFocalLengthSelected: { focalLength in
-                        selectedFocalLength = focalLength
-                        cameraManager.selectFocalLength(focalLength)
-                    }
-                )
-                .frame(maxHeight: .infinity)
-                .overlay(alignment: .bottom) {
-                    meteringPointDrawerOverlay
-                        .padding(.horizontal, Layout.horizontalPadding)
-                        .padding(.bottom, Layout.previewControlClearance)
-                }
-                .onAppear {
-                    // 启动相机会话
-                    Task {
-                        await cameraManager.requestPermission()
-                        cameraManager.startSession()
-                    }
-                }
-                .onDisappear {
-                    // 停止相机会话
-                    cameraManager.stopSession()
-                }
-
-                // 11区梯度条（快门控制版本）
-                ZoneScaleView(
-                    minZone: viewModel.selectedFilm.minZone,
-                    maxZone: viewModel.selectedFilm.maxZone,
-                    meteringPoints: viewModel.meteringPoints,
-                    shutterSpeedOffset: viewModel.shutterSpeedOffset,
-                    dragOffset: viewModel.dragShutterOffset,
-                    onShutterOffsetChange: { offset in
-                        viewModel.updateShutterDragOffset(offset)
-                    },
-                    onShutterOffsetEnd: { offset in
-                        viewModel.endShutterDragWithOffset(offset)
-                    }
-                )
-                .frame(height: Layout.zoneScaleHeight)
-                .padding(.horizontal, Layout.horizontalPadding)
-
-                // 曝光参数栏
-                ExposureInfoView(
-                    viewModel: viewModel
-                )
-                .frame(height: Layout.exposureInfoHeight)
-                .padding(.horizontal, Layout.horizontalPadding)
-                .padding(.bottom, 20)
+            if !isCalibrationActive {
+                meteringInterface
+            } else {
+                calibrationPreviewInterface
             }
 
-            // 胶片选择弹窗
-            if showingFilmSelector {
+            if showingFilmSelector && !isCalibrationActive {
                 filmSelectorOverlay
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .zIndex(2)
             }
 
-            // 光圈/快门滑动浮层
-            if viewModel.isApertureSelectorPresented || viewModel.isShutterSelectorPresented {
+            if !isCalibrationActive && (viewModel.isApertureSelectorPresented || viewModel.isShutterSelectorPresented) {
                 parameterSelectorOverlay
                     .transition(.scale(scale: 0.96, anchor: .bottom).combined(with: .opacity))
                     .zIndex(3)
             }
 
+            if let activeCalibrationMode {
+                calibrationCaptureOverlay(mode: activeCalibrationMode)
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                    .zIndex(4)
+            }
+
         }
+        .onReceive(cameraManager.$currentNativeLensInfo) { lensInfo in
+            viewModel.updateNativeLensInfo(lensInfo)
+        }
+        .task {
+            await startCameraSessionIfNeeded()
+        }
+        .onDisappear {
+            cameraManager.stopSession()
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView(
+                viewModel: viewModel,
+                cameraManager: cameraManager,
+                onStartProfessionalCalibration: { referenceEV in
+                    startCalibrationCapture(.professional, referenceEV: referenceEV)
+                },
+                onStartStandardCalibration: {
+                    startCalibrationCapture(.standard)
+                },
+                onStartQuickCalibration: {
+                    startCalibrationCapture(.quick)
+                }
+            )
+        }
+    }
+
+    private var isCalibrationActive: Bool {
+        activeCalibrationMode != nil
+    }
+
+    private var meteringInterface: some View {
+        VStack(spacing: 0) {
+            TopToolbar(
+                currentFilm: viewModel.selectedFilm,
+                currentEV: viewModel.currentExposure.ev,
+                calibrationStatus: viewModel.calibrationStatusLabel,
+                isFilmSelectorPresented: showingFilmSelector,
+                onSettingsButtonTap: {
+                    showingSettings = true
+                },
+                onFilmButtonTap: {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.88)) {
+                        showingFilmSelector.toggle()
+                    }
+                }
+            )
+            .frame(height: Layout.toolbarHeight)
+
+            cameraPreviewContent
+                .overlay(alignment: .bottom) {
+                    meteringPointDrawerOverlay
+                        .padding(.horizontal, Layout.horizontalPadding)
+                        .padding(.bottom, Layout.previewControlClearance)
+                }
+
+            ZoneScaleView(
+                minZone: viewModel.selectedFilm.minZone,
+                maxZone: viewModel.selectedFilm.maxZone,
+                meteringPoints: viewModel.meteringPoints,
+                shutterSpeedOffset: viewModel.shutterSpeedOffset,
+                dragOffset: viewModel.dragShutterOffset,
+                onShutterOffsetChange: { offset in
+                    viewModel.updateShutterDragOffset(offset)
+                },
+                onShutterOffsetEnd: { offset in
+                    viewModel.endShutterDragWithOffset(offset)
+                }
+            )
+            .frame(height: Layout.zoneScaleHeight)
+            .padding(.horizontal, Layout.horizontalPadding)
+
+            ExposureInfoView(viewModel: viewModel)
+                .frame(height: Layout.exposureInfoHeight)
+                .padding(.horizontal, Layout.horizontalPadding)
+                .padding(.bottom, 20)
+        }
+    }
+
+    private var calibrationPreviewInterface: some View {
+        cameraPreviewContent
+            .ignoresSafeArea(edges: .bottom)
+    }
+
+    private var cameraPreviewContent: some View {
+        CameraPreviewView(
+            session: cameraManager.session,
+            meteringPoints: isCalibrationActive ? [] : viewModel.meteringPoints,
+            selectedPointId: isCalibrationActive ? nil : viewModel.selectedPointId,
+            frozenFrameImage: cameraManager.frozenFrameImage,
+            isFrameFrozen: cameraManager.isFrameFrozen,
+            selectedFocalLength: selectedFocalLength,
+            showsPreviewControls: !isCalibrationActive,
+            onTap: { location in
+                if !isCalibrationActive {
+                    handlePreviewTap(at: location)
+                }
+            },
+            onPointTap: { point in
+                if !isCalibrationActive {
+                    handlePointTap(point)
+                }
+            },
+            onFreezeToggle: {
+                if !isCalibrationActive {
+                    handleStaticFrameToggle()
+                }
+            },
+            onSubjectMetering: {
+                if !isCalibrationActive {
+                    handleSubjectMetering()
+                }
+            },
+            onFocalLengthSelected: { focalLength in
+                selectedFocalLength = focalLength
+                cameraManager.selectFocalLength(focalLength)
+            }
+        )
+        .frame(maxHeight: .infinity)
     }
 
     private var filmSelectorOverlay: some View {
@@ -259,6 +307,26 @@ struct MainMeteringView: View {
         }
     }
 
+    private func calibrationCaptureOverlay(mode: CalibrationCaptureMode) -> some View {
+        CalibrationCaptureOverlay(
+            mode: mode,
+            nativeLensName: viewModel.activeNativeLensInfo?.name ?? "Unknown native lens",
+            sampleCount: calibrationSamples.count,
+            message: calibrationMessage,
+            onCancel: {
+                withAnimation(.spring(response: 0.24, dampingFraction: 0.9)) {
+                    activeCalibrationMode = nil
+                    professionalReferenceEV = nil
+                    calibrationSamples = []
+                    calibrationMessage = nil
+                }
+            },
+            onCapture: {
+                captureCalibrationSample(for: mode)
+            }
+        )
+    }
+
     private func parameterSelectorHorizontalOffset(in availableWidth: CGFloat) -> CGFloat {
         let maxOffset = max((availableWidth - Layout.parameterSelectorWidth) / 2 - Layout.parameterSelectorScreenMargin, 0)
         let offset = min(Layout.parameterSelectorHorizontalOffset, maxOffset)
@@ -281,9 +349,14 @@ struct MainMeteringView: View {
             return
         }
 
-        let brightness = cameraManager.getBrightness(at: location, regionSize: 64)
+        let brightness = cameraManager.getBrightness(at: location)
 
-        viewModel.addMeteringPoint(x: location.x, y: location.y, brightness: brightness)
+        viewModel.addMeteringPoint(
+            x: location.x,
+            y: location.y,
+            brightness: brightness,
+            cameraReferenceEV: cameraManager.currentMeteringReferenceEV
+        )
     }
 
     /// 处理测光点点击
@@ -314,17 +387,232 @@ struct MainMeteringView: View {
         viewModel.addMeteringPoint(
             x: result.normalizedPoint.x,
             y: result.normalizedPoint.y,
-            brightness: result.brightness
+            brightness: result.brightness,
+            cameraReferenceEV: cameraManager.currentMeteringReferenceEV
         )
     }
 
     /// 在同一归一化坐标上重新采样亮度并更新测光数据
     private func remeterPoint(_ point: MeteringPoint) {
         let brightness = cameraManager.getBrightness(
-            at: CGPoint(x: point.x, y: point.y),
-            regionSize: 64
+            at: CGPoint(x: point.x, y: point.y)
         )
-        viewModel.remeterPoint(id: point.id, brightness: brightness)
+        viewModel.remeterPoint(
+            id: point.id,
+            brightness: brightness,
+            cameraReferenceEV: cameraManager.currentMeteringReferenceEV
+        )
+    }
+
+    private func startCalibrationCapture(_ mode: CalibrationCaptureMode, referenceEV: Double? = nil) {
+        cameraManager.resumeLivePreview()
+        cameraManager.startSession()
+        professionalReferenceEV = referenceEV
+        calibrationSamples = []
+        calibrationMessage = nil
+        _ = cameraManager.lockCurrentExposure()
+
+        withAnimation(.spring(response: 0.24, dampingFraction: 0.9)) {
+            activeCalibrationMode = mode
+        }
+    }
+
+    private func startCameraSessionIfNeeded() async {
+        await cameraManager.requestPermission()
+        cameraManager.startSession()
+    }
+
+    private func captureCalibrationSample(for mode: CalibrationCaptureMode) {
+        switch mode {
+        case .professional:
+            guard let professionalReferenceEV else {
+                calibrationMessage = "Enter a reference EV before sampling."
+                return
+            }
+
+            let measuredBrightness = cameraManager.getCenterWeightedBrightness()
+            guard let cameraReferenceEV = cameraManager.currentMeteringReferenceEV else {
+                calibrationMessage = "No camera exposure reference available."
+                return
+            }
+            guard viewModel.saveProfessionalCalibration(
+                referenceEV: professionalReferenceEV,
+                cameraReferenceEV: cameraReferenceEV,
+                measuredBrightness: measuredBrightness
+            ) else {
+                calibrationMessage = "Calibration sample is invalid. Re-aim and sample again."
+                return
+            }
+            calibrationMessage = "Professional calibration saved."
+            activeCalibrationMode = nil
+
+        case .standard:
+            guard let sample = cameraManager.captureCalibrationSample() else {
+                calibrationMessage = "No camera sample available."
+                return
+            }
+
+            calibrationSamples.append(sample)
+            if calibrationSamples.count >= mode.requiredSamples {
+                guard viewModel.saveCalibration(level: .standard, samples: calibrationSamples) else {
+                    calibrationMessage = "Samples are outside the trusted range. Re-aim at an 18% gray card."
+                    calibrationSamples = []
+                    return
+                }
+                calibrationMessage = "Standard calibration saved."
+                activeCalibrationMode = nil
+            } else {
+                calibrationMessage = "Sample \(calibrationSamples.count)/\(mode.requiredSamples) captured."
+            }
+
+        case .quick:
+            guard let sample = cameraManager.captureCalibrationSample() else {
+                calibrationMessage = "No camera sample available."
+                return
+            }
+
+            guard viewModel.saveCalibration(level: .quick, samples: [sample]) else {
+                calibrationMessage = "Quick calibration was rejected. Aim at a middle-tone area and try again."
+                return
+            }
+            calibrationMessage = "Quick calibration saved."
+            activeCalibrationMode = nil
+        }
+    }
+}
+
+private enum CalibrationCaptureMode {
+    case professional
+    case standard
+    case quick
+
+    var title: String {
+        switch self {
+        case .professional:
+            return "Professional Calibration"
+        case .standard:
+            return "Standard Calibration"
+        case .quick:
+            return "Quick Calibration"
+        }
+    }
+
+    var instruction: String {
+        switch self {
+        case .professional:
+            return "Aim the center frame at the gray card measured by your physical meter."
+        case .standard:
+            return "Fill the center frame with an 18% gray card and capture five samples."
+        case .quick:
+            return "Aim at the scene you want to use as the temporary iPhone reference."
+        }
+    }
+
+    var requiredSamples: Int {
+        switch self {
+        case .standard:
+            return 5
+        case .professional, .quick:
+            return 1
+        }
+    }
+}
+
+private struct CalibrationCaptureOverlay: View {
+    let mode: CalibrationCaptureMode
+    let nativeLensName: String
+    let sampleCount: Int
+    let message: String?
+    let onCancel: () -> Void
+    let onCapture: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            topPanel
+                .padding(.horizontal, 20)
+                .padding(.top, 18)
+
+            Spacer()
+
+            calibrationFrame
+
+            Spacer()
+
+            bottomControls
+                .padding(.horizontal, 20)
+                .padding(.bottom, 28)
+        }
+        .background(Color.black.opacity(0.18).ignoresSafeArea())
+    }
+
+    private var topPanel: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(mode.title)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundColor(.white)
+
+            Text(nativeLensName)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(.white.opacity(0.72))
+
+            Text(mode.instruction)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.white.opacity(0.88))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Color.black.opacity(0.72))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var calibrationFrame: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.white.opacity(0.86), lineWidth: 2)
+                .frame(width: 176, height: 132)
+
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .stroke(Color.white.opacity(0.24), lineWidth: 1)
+                .frame(width: 136, height: 96)
+
+            Circle()
+                .fill(Color.white.opacity(0.88))
+                .frame(width: 5, height: 5)
+        }
+    }
+
+    private var bottomControls: some View {
+        HStack(spacing: 12) {
+            Button("Cancel", action: onCancel)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.white.opacity(0.8))
+                .frame(height: 44)
+                .frame(maxWidth: .infinity)
+
+            Button(captureTitle, action: onCapture)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(.black)
+                .frame(height: 44)
+                .frame(maxWidth: .infinity)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .overlay(alignment: .top) {
+            if let message {
+                Text(message)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white.opacity(0.82))
+                    .offset(y: -24)
+            }
+        }
+    }
+
+    private var captureTitle: String {
+        if mode.requiredSamples > 1 {
+            return "Sample \(sampleCount + 1)/\(mode.requiredSamples)"
+        }
+        return "Capture"
     }
 }
 

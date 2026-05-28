@@ -11,6 +11,14 @@ import Foundation
 @MainActor
 final class CameraManager: NSObject, ObservableObject {
 
+    enum MeteringSampling {
+        static let minimumMeteringAreaRatio: Double = 0.01
+        static let spotMeteringAreaRatio: Double = 0.02
+        static let subjectMeteringAreaRatio: Double = 0.03
+        static let calibrationMeteringAreaRatio: Double = 0.02
+        static let maximumMeteringAreaRatio: Double = 0.05
+    }
+
     // MARK: - Published Properties
 
     /// 相机权限状态
@@ -34,6 +42,9 @@ final class CameraManager: NSObject, ObservableObject {
     /// 当前手机镜头焦段信息
     @Published private(set) var currentLensInfo: CameraLensInfo = .unknown
 
+    /// 当前原生 iPhone 镜头信息，用作校准 key
+    @Published private(set) var currentNativeLensInfo: NativeLensInfo?
+
     // MARK: - Properties
 
     /// 相机会话
@@ -56,6 +67,9 @@ final class CameraManager: NSObject, ObservableObject {
 
     /// 冻结帧缓存
     private var frozenFrame: CVImageBuffer?
+
+    /// 冻结帧对应的相机曝光参数
+    private var frozenExposureSnapshot: CameraExposureSnapshot?
 
     /// 帧访问锁
     private let frameLock = NSLock()
@@ -171,6 +185,7 @@ final class CameraManager: NSObject, ObservableObject {
             return false
         }
         frozenFrame = frame
+        frozenExposureSnapshot = currentExposureSnapshot
         frameLock.unlock()
 
         frozenFrameImage = makeCGImage(from: frame)
@@ -182,6 +197,7 @@ final class CameraManager: NSObject, ObservableObject {
     func resumeLivePreview() {
         frameLock.lock()
         frozenFrame = nil
+        frozenExposureSnapshot = nil
         frameLock.unlock()
 
         frozenFrameImage = nil
@@ -200,6 +216,78 @@ final class CameraManager: NSObject, ObservableObject {
 
             self.applyZoom(for: focalLength, on: device)
         }
+    }
+
+    /// 当前相机曝光参数快照，用于从 iPhone 曝光元数据反推 EV100
+    var currentExposureSnapshot: CameraExposureSnapshot? {
+        guard let device = videoDeviceInput?.device else { return nil }
+        let duration = CMTimeGetSeconds(device.exposureDuration)
+        guard duration.isFinite, duration > 0 else { return nil }
+
+        return CameraExposureSnapshot(
+            aperture: Double(device.lensAperture),
+            exposureDuration: duration,
+            iso: Double(device.iso)
+        )
+    }
+
+    /// 当前测光帧对应的场景 EV100。冻结帧使用截取瞬间的曝光参数。
+    var currentMeteringReferenceEV: Double? {
+        let snapshot = frozenExposureSnapshot ?? currentExposureSnapshot
+        guard let snapshot else { return nil }
+        return MeteringCalibrationMath.ev100(
+            aperture: snapshot.aperture,
+            exposureDuration: snapshot.exposureDuration,
+            iso: snapshot.iso
+        )
+    }
+
+    /// 获取中心加权亮度，用于快速/标准校准
+    func getCenterWeightedBrightness() -> Double {
+        getBrightness(
+            at: CGPoint(x: 0.5, y: 0.5),
+            areaRatio: MeteringSampling.calibrationMeteringAreaRatio
+        )
+    }
+
+    /// 锁定当前稳定曝光，避免校准采样期间自动曝光继续漂移
+    @discardableResult
+    func lockCurrentExposure() -> Bool {
+        guard let device = videoDeviceInput?.device,
+              device.isExposureModeSupported(.locked) else {
+            return false
+        }
+
+        do {
+            try device.lockForConfiguration()
+            device.exposureMode = .locked
+            device.unlockForConfiguration()
+            return true
+        } catch {
+            Task { @MainActor in
+                self.error = .configurationFailed(error.localizedDescription)
+            }
+            return false
+        }
+    }
+
+    /// 捕获一次校准样本：图像测得 EV 与 iPhone 曝光参数推导 EV100 的差异
+    func captureCalibrationSample() -> CalibrationSample? {
+        guard let snapshot = currentExposureSnapshot else { return nil }
+
+        let brightness = getCenterWeightedBrightness()
+        let measuredEV = ExposureCalculator.brightnessToEV(brightness: brightness)
+        let referenceEV = MeteringCalibrationMath.ev100(
+            aperture: snapshot.aperture,
+            exposureDuration: snapshot.exposureDuration,
+            iso: snapshot.iso
+        )
+
+        return CalibrationSample(
+            measuredEV: measuredEV,
+            referenceEV: referenceEV,
+            brightness: brightness
+        )
     }
 
     // MARK: - Private Methods
@@ -231,9 +319,9 @@ final class CameraManager: NSObject, ObservableObject {
     private func addVideoDataOutput() throws {
         let videoDataOutput = AVCaptureVideoDataOutput()
 
-        // 设置像素格式为32位BGRA，便于处理
+        // Prefer YUV luma data so metering reads the camera signal before RGB display conversion.
         videoDataOutput.videoSettings = [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
         ]
 
         // 设置输出代理
@@ -252,16 +340,16 @@ final class CameraManager: NSObject, ObservableObject {
     /// 获取指定位置的亮度值（带平滑处理）
     /// - Parameters:
     ///   - point: 点击位置（归一化坐标 0...1）
-    ///   - regionSize: 测光区域大小（正方形边长，像素）
+    ///   - areaRatio: 测光区域面积比例，点测光默认 2%，并限制在 1%...5%
     /// - Returns: 归一化亮度值 [0.0, 1.0]
-    func getBrightness(at point: CGPoint, regionSize: Int = 64) -> Double {
+    func getBrightness(at point: CGPoint, areaRatio: Double = MeteringSampling.spotMeteringAreaRatio) -> Double {
         guard let frame = activeMeteringFrame() else {
             // 无可用帧时返回历史平均值或默认值
             return getSmoothedBrightness(fallback: 0.18)
         }
 
         let samplingPoint = normalizedSamplingPoint(forDisplayPoint: point)
-        let rawBrightness = extractBrightness(from: frame, atNormalizedPoint: samplingPoint, regionSize: regionSize)
+        let rawBrightness = extractBrightness(from: frame, atNormalizedPoint: samplingPoint, areaRatio: areaRatio)
 
         // 应用平滑处理
         let smoothedBrightness = addBrightnessToHistoryAndSmooth(rawBrightness)
@@ -277,7 +365,11 @@ final class CameraManager: NSObject, ObservableObject {
 
         return SubjectMeteringAnalyzer.analyze(gridSize: 9) { point in
             let samplingPoint = normalizedSamplingPoint(forDisplayPoint: point)
-            return extractBrightness(from: frame, atNormalizedPoint: samplingPoint, regionSize: 96)
+            return extractBrightness(
+                from: frame,
+                atNormalizedPoint: samplingPoint,
+                areaRatio: MeteringSampling.subjectMeteringAreaRatio
+            )
         }
     }
 
@@ -351,18 +443,67 @@ final class CameraManager: NSObject, ObservableObject {
 
     // MARK: - Private Helper Methods
 
-    /// 从图像帧中提取指定区域的平均亮度
-    /// - Parameters:
-    ///   - frame: 视频帧（CVImageBuffer）
-    ///   - point: 中心点归一化坐标
-    ///   - regionSize: 测光区域大小
-    /// - Returns: 归一化亮度值 [0.0, 1.0]
-    private func extractBrightness(from frame: CVImageBuffer, atNormalizedPoint point: CGPoint, regionSize: Int) -> Double {
+    /// 从图像帧中提取指定区域的平均亮度，优先使用 YUV luma plane，BGRA 仅作兼容 fallback。
+    private func extractBrightness(from frame: CVImageBuffer, atNormalizedPoint point: CGPoint, areaRatio: Double) -> Double {
         CVPixelBufferLockBaseAddress(frame, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(frame, .readOnly) }
 
+        if CVPixelBufferIsPlanar(frame),
+           CVPixelBufferGetPlaneCount(frame) > 0,
+           let luma = extractLumaBrightness(from: frame, atNormalizedPoint: point, areaRatio: areaRatio) {
+            return luma
+        }
+
+        return extractBGRABrightness(from: frame, atNormalizedPoint: point, areaRatio: areaRatio)
+    }
+
+    private func meteringSideLength(for frame: CVImageBuffer, areaRatio: Double) -> Int {
         let width = CVPixelBufferGetWidth(frame)
         let height = CVPixelBufferGetHeight(frame)
+        let ratio = max(
+            MeteringSampling.minimumMeteringAreaRatio,
+            min(MeteringSampling.maximumMeteringAreaRatio, areaRatio)
+        )
+        return max(1, Int(round(sqrt(Double(width * height) * ratio))))
+    }
+
+    private func extractLumaBrightness(from frame: CVImageBuffer, atNormalizedPoint point: CGPoint, areaRatio: Double) -> Double? {
+        let width = CVPixelBufferGetWidthOfPlane(frame, 0)
+        let height = CVPixelBufferGetHeightOfPlane(frame, 0)
+        let regionSize = meteringSideLength(for: frame, areaRatio: areaRatio)
+
+        let halfSize = regionSize / 2
+        let normalizedX = max(0, min(1, point.x))
+        let normalizedY = max(0, min(1, point.y))
+        let x = max(halfSize, min(Int(normalizedX * CGFloat(width)), width - halfSize))
+        let y = max(halfSize, min(Int(normalizedY * CGFloat(height)), height - halfSize))
+
+        guard let baseAddress = CVPixelBufferGetBaseAddressOfPlane(frame, 0) else { return nil }
+
+        let bytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(frame, 0)
+        let buffer = baseAddress.assumingMemoryBound(to: UInt8.self)
+
+        var totalBrightness: Double = 0
+        var pixelCount = 0
+
+        for dy in -halfSize..<halfSize {
+            for dx in -halfSize..<halfSize {
+                let px = x + dx
+                let py = y + dy
+                let offset = py * bytesPerRow + px
+                totalBrightness += Double(buffer[offset]) / 255.0
+                pixelCount += 1
+            }
+        }
+
+        guard pixelCount > 0 else { return nil }
+        return totalBrightness / Double(pixelCount)
+    }
+
+    private func extractBGRABrightness(from frame: CVImageBuffer, atNormalizedPoint point: CGPoint, areaRatio: Double) -> Double {
+        let width = CVPixelBufferGetWidth(frame)
+        let height = CVPixelBufferGetHeight(frame)
+        let regionSize = meteringSideLength(for: frame, areaRatio: areaRatio)
 
         // 计算测光区域边界
         let halfSize = regionSize / 2
@@ -448,8 +589,41 @@ final class CameraManager: NSObject, ObservableObject {
 
         self.session.addInput(videoInput)
         self.videoDeviceInput = videoInput
+        self.updateNativeLensInfo(for: videoDevice)
         self.updateLensInfo(for: videoDevice)
         self.applyZoom(for: selectedFocalLength, on: videoDevice)
+    }
+
+    /// 更新当前原生镜头标识。模拟焦段不改变这个校准 key。
+    private func updateNativeLensInfo(for device: AVCaptureDevice) {
+        let key = [
+            device.position == .back ? "back" : "front",
+            device.deviceType.rawValue,
+            device.uniqueID
+        ].joined(separator: "|")
+
+        let info = NativeLensInfo(
+            key: key,
+            name: nativeLensDisplayName(for: device),
+            deviceType: device.deviceType.rawValue
+        )
+
+        Task { @MainActor in
+            self.currentNativeLensInfo = info
+        }
+    }
+
+    private func nativeLensDisplayName(for device: AVCaptureDevice) -> String {
+        switch device.deviceType {
+        case .builtInTripleCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera:
+            return "Main Camera"
+        case .builtInUltraWideCamera:
+            return "Ultra Wide Camera"
+        case .builtInTelephotoCamera:
+            return "Telephoto Camera"
+        default:
+            return device.localizedName
+        }
     }
 
     /// 更新当前镜头焦段信息

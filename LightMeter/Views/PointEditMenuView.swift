@@ -41,16 +41,16 @@ struct PointEditMenuView: View {
                     icon: "arrow.counterclockwise",
                     color: .blue
                 ) {
-                    // 使用真实相机测光
-                    // 将归一化坐标转换为预览区域坐标
-                    let previewWidth: CGFloat = 393  // 标准预览宽度
-                    let previewHeight: CGFloat = 500 // 估算的预览高度
                     let pointLocation = CGPoint(
-                        x: point.x * previewWidth,
-                        y: point.y * previewHeight
+                        x: point.x,
+                        y: point.y
                     )
-                    let brightness = cameraManager.getBrightness(at: pointLocation, regionSize: 64)
-                    viewModel.remeterPoint(id: point.id, brightness: brightness)
+                    let brightness = cameraManager.getBrightness(at: pointLocation)
+                    viewModel.remeterPoint(
+                        id: point.id,
+                        brightness: brightness,
+                        cameraReferenceEV: cameraManager.currentMeteringReferenceEV
+                    )
                 }
 
                 // 删除按钮

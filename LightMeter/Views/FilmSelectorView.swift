@@ -48,9 +48,9 @@ struct FilmSelectorView: View {
         .background(Colors.background)
         .clipShape(RoundedRectangle(cornerRadius: Constants.cornerRadius, style: .continuous))
         .shadow(color: Color.black.opacity(0.32), radius: 18, x: 0, y: 12)
-        .overlay(alignment: .topLeading) {
+        .overlay(alignment: .top) {
             filmAnchorTriangle
-                .offset(x: 56, y: -7)
+                .offset(y: -7)
         }
     }
 

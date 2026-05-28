@@ -27,8 +27,10 @@
 		8D8EAB2C11934F49A1110005 /* FocalLengthPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2B11934F49A1110005 /* FocalLengthPreview.swift */; };
 		8D8EAB2E11934F49A1110006 /* MeteringPointDrawerState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2D11934F49A1110006 /* MeteringPointDrawerState.swift */; };
 		8D8EAB3011934F49A1110007 /* MeteringPointDrawerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2F11934F49A1110007 /* MeteringPointDrawerView.swift */; };
+		9A1B2C3D4E5F60718293A4B5 /* MeteringCalibration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A1B2C3D4E5F60718293A4B4 /* MeteringCalibration.swift */; };
 		C8F505A44B5D303E05ADB9C4 /* ExposureCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886C6492BD1983B14D2DEC87 /* ExposureCalculator.swift */; };
 		CA7EAEDD44CD59CAF100EA87 /* FilmSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 160944A873C68C8AB79474C6 /* FilmSelectorView.swift */; };
+		D4E5F60718293A4B59A1B2C4 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F60718293A4B59A1B2C3 /* SettingsView.swift */; };
 		E2825F6D9C8BAFD56F68BEDD /* LightMeterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4BAB4CD2C382B32711F111 /* LightMeterApp.swift */; };
 		E7A906B3CC83B7300254ADDF /* ApertureSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC6C6136F994F1FFD082DD59 /* ApertureSelectorView.swift */; };
 		F318E4B2DA60168EDDD1D525 /* MeteringViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65B1B9166FE4F4A5ABB1607B /* MeteringViewModel.swift */; };
@@ -54,11 +56,13 @@
 		8D8EAB2B11934F49A1110005 /* FocalLengthPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocalLengthPreview.swift; sourceTree = "<group>"; };
 		8D8EAB2D11934F49A1110006 /* MeteringPointDrawerState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeteringPointDrawerState.swift; sourceTree = "<group>"; };
 		8D8EAB2F11934F49A1110007 /* MeteringPointDrawerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeteringPointDrawerView.swift; sourceTree = "<group>"; };
+		9A1B2C3D4E5F60718293A4B4 /* MeteringCalibration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeteringCalibration.swift; sourceTree = "<group>"; };
 		AA2590533435D44A142C4D10 /* TopToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopToolbar.swift; sourceTree = "<group>"; };
 		B03871FEC36F6A79637C221E /* FilmPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmPreset.swift; sourceTree = "<group>"; };
 		B3A302588E3CB176611BDEB9 /* DeviceConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConfiguration.swift; sourceTree = "<group>"; };
 		D13E0B369CC2FD3A8F8E43C3 /* MainMeteringView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMeteringView.swift; sourceTree = "<group>"; };
 		D262005F35717DBBD35502E3 /* MeteringPointView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeteringPointView.swift; sourceTree = "<group>"; };
+		D4E5F60718293A4B59A1B2C3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		D44659025A2122CFFF06FC7C /* MeteringPoint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeteringPoint.swift; sourceTree = "<group>"; };
 		DB8D6E7E7EB93790A14FE8B0 /* PointEditMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointEditMenuView.swift; sourceTree = "<group>"; };
 		DC6C6136F994F1FFD082DD59 /* ApertureSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApertureSelectorView.swift; sourceTree = "<group>"; };
@@ -78,6 +82,7 @@
 				8D8EAB2F11934F49A1110007 /* MeteringPointDrawerView.swift */,
 				D262005F35717DBBD35502E3 /* MeteringPointView.swift */,
 				DB8D6E7E7EB93790A14FE8B0 /* PointEditMenuView.swift */,
+				D4E5F60718293A4B59A1B2C3 /* SettingsView.swift */,
 				7C4A1E4912B94A5B8B7A1001 /* ShutterSelectorView.swift */,
 				AA2590533435D44A142C4D10 /* TopToolbar.swift */,
 				6481CE7D28BEE96594B5F5B4 /* TopToolbarView.swift */,
@@ -148,6 +153,7 @@
 				886C6492BD1983B14D2DEC87 /* ExposureCalculator.swift */,
 				B03871FEC36F6A79637C221E /* FilmPreset.swift */,
 				8D8EAB2B11934F49A1110005 /* FocalLengthPreview.swift */,
+				9A1B2C3D4E5F60718293A4B4 /* MeteringCalibration.swift */,
 				8D8EAB2D11934F49A1110006 /* MeteringPointDrawerState.swift */,
 				8D8EAB2711934F49A1110003 /* MeteringPointLayout.swift */,
 				D44659025A2122CFFF06FC7C /* MeteringPoint.swift */,
@@ -242,10 +248,12 @@
 				8D8EAB2E11934F49A1110006 /* MeteringPointDrawerState.swift in Sources */,
 				8D8EAB3011934F49A1110007 /* MeteringPointDrawerView.swift in Sources */,
 				8D8EAB2811934F49A1110003 /* MeteringPointLayout.swift in Sources */,
+				9A1B2C3D4E5F60718293A4B5 /* MeteringCalibration.swift in Sources */,
 				6B697BA7CABA9BBD44771C56 /* MeteringPoint.swift in Sources */,
 				247C63D3BA05AA0E0E9706E0 /* MeteringPointView.swift in Sources */,
 				F318E4B2DA60168EDDD1D525 /* MeteringViewModel.swift in Sources */,
 				396F1D7DEA9946913931E54D /* PointEditMenuView.swift in Sources */,
+				D4E5F60718293A4B59A1B2C4 /* SettingsView.swift in Sources */,
 				7C4A1E4A12B94A5B8B7A1001 /* ShutterSelectorView.swift in Sources */,
 				8D8EAB2611934F49A1110002 /* StaticFramePreviewGeometry.swift in Sources */,
 				8D8EAB2411934F49A1110001 /* SubjectMeteringAnalyzer.swift in Sources */,
@@ -261,6 +269,7 @@
 		09313B7806A8F306622A8851 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = LightMeter/Info.plist;
@@ -407,6 +416,7 @@
 		CB7A654B38D29DA756FAD255 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				INFOPLIST_FILE = LightMeter/Info.plist;

@@ -27,6 +27,9 @@ struct CameraPreviewView: View {
     /// 当前选择的标准定焦焦段
     let selectedFocalLength: StandardFocalLength
 
+    /// 是否显示静帧、主体测光和模拟焦段控制
+    let showsPreviewControls: Bool
+
     /// 点击预览的回调
     let onTap: (CGPoint) -> Void
 
@@ -75,9 +78,11 @@ struct CameraPreviewView: View {
                 // 测光点标记覆盖层
                 meteringPointsOverlay(in: contentSize)
 
-                // 取景控制条始终置顶，避免冻结帧后无法恢复
-                previewControlBar
-                    .zIndex(30)
+                if showsPreviewControls {
+                    // 取景控制条始终置顶，避免冻结帧后无法恢复
+                    previewControlBar
+                        .zIndex(30)
+                }
             }
             .frame(width: contentSize.width, height: contentSize.height)
             .clipped()
@@ -360,6 +365,7 @@ private class VideoPreviewView: UIView {
         frozenFrameImage: nil,
         isFrameFrozen: false,
         selectedFocalLength: .mm35,
+        showsPreviewControls: true,
         onTap: { location in
             print("Tapped at: \(location)")
             let colorIndex = points.count % MeteringPoint.colors.count

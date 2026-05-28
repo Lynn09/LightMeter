@@ -11,6 +11,9 @@ struct ExposureCalculator {
     /// 测光表校准常数 K = 12.5
     static let calibrationConstant: Double = 12.5
 
+    /// Zone V 对应的 18% 中灰反射率
+    static let middleGrayReflectance: Double = 0.18
+
     /// 参考 EV 值（Zone V 对应的 EV）
     static let referenceEV: Double = 12.5  // 标准参考值
 
@@ -41,7 +44,13 @@ struct ExposureCalculator {
     static func brightnessToEV(brightness: Double, referenceEV: Double = ExposureCalculator.referenceEV) -> Double {
         guard brightness > 0 else { return referenceEV }
         // Zone V = 18%反射率 = 0.18, 对应 referenceEV
-        return log2(brightness / 0.18) + referenceEV
+        return log2(brightness / middleGrayReflectance) + referenceEV
+    }
+
+    /// 将 EV 反推为以 18% 中灰为基准的归一化亮度
+    static func brightness(fromEV ev: Double, referenceEV: Double = ExposureCalculator.referenceEV) -> Double {
+        guard ev.isFinite else { return middleGrayReflectance }
+        return middleGrayReflectance * pow(2.0, ev - referenceEV)
     }
 
     /// 将 EV 值映射到 Zone
@@ -267,6 +276,24 @@ struct ExposureCalculator {
         return (
             aperture: baseAperture,
             shutterSpeed: baseShutterSpeed,
+            iso: iso,
+            ev: ev
+        )
+    }
+
+    static func calculateAutoExposure(
+        ev: Double,
+        iso: Int,
+        preferredShutterSpeed: Double = baseShutterSpeed
+    ) -> (aperture: Double, shutterSpeed: Double, iso: Int, ev: Double) {
+        let shutter = nearestStandardShutter(preferredShutterSpeed)
+        let isoStops = log2(Double(iso) / 100.0)
+        let apertureSquared = pow(2.0, ev + isoStops) * shutter
+        let aperture = sqrt(max(apertureSquared, 0.01))
+
+        return (
+            aperture: nearestStandardAperture(aperture),
+            shutterSpeed: shutter,
             iso: iso,
             ev: ev
         )

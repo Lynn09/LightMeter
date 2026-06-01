@@ -44,7 +44,7 @@ struct MeteringCalibrationBehaviorTest {
             cameraReferenceEV: 12.5,
             calibration: professional
         ) - 12.7) < 0.0001)
-        precondition(professional.statusLabel == "Professional +0.2 EV")
+        precondition(professional.statusLabel == "\(CalibrationLevel.professional.displayName) +0.2 EV")
         precondition(CalibrationLevel.professional.trustRank > CalibrationLevel.standard.trustRank)
 
         let indoorMiddleGraySample = CalibrationSample(

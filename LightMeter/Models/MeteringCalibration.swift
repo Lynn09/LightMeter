@@ -19,11 +19,11 @@ enum CalibrationLevel: String, Codable, CaseIterable {
     var displayName: String {
         switch self {
         case .professional:
-            return "Professional"
+            return String(localized: "calibration.level.professional")
         case .standard:
-            return "Standard"
+            return String(localized: "calibration.level.standard")
         case .quick:
-            return "Quick"
+            return String(localized: "calibration.level.quick")
         }
     }
 }

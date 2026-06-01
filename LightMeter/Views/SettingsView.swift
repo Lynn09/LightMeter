@@ -13,7 +13,7 @@ struct SettingsView: View {
     @State private var calibrationMessage: String?
 
     private var currentLensName: String {
-        viewModel.activeNativeLensInfo?.name ?? "No native lens"
+        viewModel.activeNativeLensInfo?.name ?? String(localized: "settings.noNativeLens")
     }
 
     var body: some View {
@@ -23,11 +23,11 @@ struct SettingsView: View {
                 calibrationActionsSection
                 resetSection
             }
-            .navigationTitle("Settings")
+            .navigationTitle("settings.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
+                    Button("settings.done") {
                         dismiss()
                     }
                 }
@@ -37,13 +37,13 @@ struct SettingsView: View {
     }
 
     private var currentCalibrationSection: some View {
-        Section("Metering Calibration") {
-            LabeledContent("Native Lens", value: currentLensName)
-            LabeledContent("Status", value: viewModel.calibrationStatusLabel)
+        Section("settings.meteringCalibration") {
+            LabeledContent("settings.nativeLens", value: currentLensName)
+            LabeledContent("settings.status", value: viewModel.calibrationStatusLabel)
 
             if let calibration = viewModel.activeCalibration {
-                LabeledContent("Samples", value: "\(calibration.sampleCount)")
-                LabeledContent("Created", value: calibration.createdAt.formatted(date: .abbreviated, time: .shortened))
+                LabeledContent("settings.samples", value: "\(calibration.sampleCount)")
+                LabeledContent("settings.created", value: calibration.createdAt.formatted(date: .abbreviated, time: .shortened))
             }
 
             if let message = calibrationMessage {
@@ -55,54 +55,60 @@ struct SettingsView: View {
     }
 
     private var calibrationActionsSection: some View {
-        Section("Calibration Actions") {
+        Section("settings.calibrationActions") {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Professional Calibration")
+                Text("settings.calibration.professional")
                     .font(.headline)
 
-                TextField("Reference EV100", text: $professionalReferenceEV)
+                TextField("settings.referenceEV100.placeholder", text: $professionalReferenceEV)
                     .keyboardType(.decimalPad)
 
-                Button("Start Professional Calibration") {
+                Button("settings.startProfessionalCalibration") {
                     startProfessionalCalibration()
                 }
             }
             .padding(.vertical, 4)
 
-            Button("Standard Calibration") {
-                onStartStandardCalibration()
+            Button("settings.calibration.standard") {
                 dismiss()
+                DispatchQueue.main.async {
+                    onStartStandardCalibration()
+                }
             }
 
-            Button("Quick Calibration") {
-                onStartQuickCalibration()
+            Button("settings.calibration.quick") {
                 dismiss()
+                DispatchQueue.main.async {
+                    onStartQuickCalibration()
+                }
             }
         }
     }
 
     private var resetSection: some View {
-        Section("Reset") {
-            Button("Reset Current Native Lens", role: .destructive) {
+        Section("settings.reset") {
+            Button("settings.resetCurrentNativeLens", role: .destructive) {
                 viewModel.resetCalibrationForCurrentLens()
-                calibrationMessage = "Current native lens calibration was reset."
+                calibrationMessage = String(localized: "settings.message.resetCurrentNativeLens")
             }
 
-            Button("Reset All Calibrations", role: .destructive) {
+            Button("settings.resetAllCalibrations", role: .destructive) {
                 viewModel.resetAllCalibrations()
-                calibrationMessage = "All calibration data was reset."
+                calibrationMessage = String(localized: "settings.message.resetAllCalibrations")
             }
         }
     }
 
     private func startProfessionalCalibration() {
         guard let referenceEV = Double(professionalReferenceEV) else {
-            calibrationMessage = "Enter a valid EV100 value."
+            calibrationMessage = String(localized: "settings.message.invalidReferenceEV")
             return
         }
 
-        onStartProfessionalCalibration(referenceEV)
         dismiss()
+        DispatchQueue.main.async {
+            onStartProfessionalCalibration(referenceEV)
+        }
     }
 }
 

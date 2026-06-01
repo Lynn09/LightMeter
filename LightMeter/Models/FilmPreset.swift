@@ -44,6 +44,10 @@ struct FilmPreset: Identifiable, Equatable, Hashable {
         Color(hex: color) ?? .blue
     }
 
+    var localizedDescription: String {
+        NSLocalizedString(description, comment: "")
+    }
+
     // MARK: - Equatable
 
     static func == (lhs: FilmPreset, rhs: FilmPreset) -> Bool {
@@ -79,7 +83,7 @@ extension FilmPreset {
         name: "Velvia 50",
         color: "#007AFF",
         zoneRange: "Zone IV-VIII",
-        description: "高饱和度，色彩鲜艳",
+        description: "film.velvia50.description",
         minZone: 4,
         maxZone: 8,
         iso: 50,
@@ -92,7 +96,7 @@ extension FilmPreset {
         name: "Velvia 100",
         color: "#0A84FF",
         zoneRange: "Zone IV-VIII",
-        description: "高饱和度，反差较高",
+        description: "film.velvia100.description",
         minZone: 4,
         maxZone: 8,
         iso: 100,
@@ -105,7 +109,7 @@ extension FilmPreset {
         name: "Provia 100F",
         color: "#5856D6",
         zoneRange: "Zone III-VIII",
-        description: "中性色彩，平衡性好",
+        description: "film.provia100f.description",
         minZone: 3,
         maxZone: 8,
         iso: 100,
@@ -118,7 +122,7 @@ extension FilmPreset {
         name: "Ektachrome",
         color: "#FF9500",
         zoneRange: "Zone III-VII",
-        description: "暖色调，适合人像",
+        description: "film.ektachrome.description",
         minZone: 3,
         maxZone: 7,
         iso: 100,
@@ -131,7 +135,7 @@ extension FilmPreset {
         name: "Portra 160",
         color: "#D6A15D",
         zoneRange: "Zone II-IX",
-        description: "肤色自然，高光宽容",
+        description: "film.portra160.description",
         minZone: 2,
         maxZone: 9,
         iso: 160,
@@ -144,7 +148,7 @@ extension FilmPreset {
         name: "Portra 400",
         color: "#C98942",
         zoneRange: "Zone II-IX",
-        description: "通用人像，高光宽容",
+        description: "film.portra400.description",
         minZone: 2,
         maxZone: 9,
         iso: 400,
@@ -157,7 +161,7 @@ extension FilmPreset {
         name: "Gold 200",
         color: "#F5C542",
         zoneRange: "Zone II-VIII",
-        description: "日常暖调，宽容适中",
+        description: "film.gold200.description",
         minZone: 2,
         maxZone: 8,
         iso: 200,
@@ -170,7 +174,7 @@ extension FilmPreset {
         name: "Ultramax 400",
         color: "#E85D2A",
         zoneRange: "Zone II-VIII",
-        description: "日常高感，色彩鲜明",
+        description: "film.ultramax400.description",
         minZone: 2,
         maxZone: 8,
         iso: 400,

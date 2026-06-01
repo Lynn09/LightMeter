@@ -60,7 +60,7 @@ struct FilmSelectorView: View {
     private var header: some View {
         HStack {
             // 标题
-            Text("选择胶片")
+            Text("film.selector.title")
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(Colors.textPrimary)
 
@@ -139,7 +139,7 @@ private struct FilmOptionRow: View {
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
 
-                    Text("\(film.zoneRange) · \(film.description)")
+                    Text("\(film.zoneRange) · \(film.localizedDescription)")
                         .font(.system(size: 13))
                         .foregroundColor(Color(hex: "#8E8E93")!)
 
@@ -155,7 +155,7 @@ private struct FilmOptionRow: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 24))
                             .foregroundColor(film.swiftColor)
-                            .accessibilityLabel("已选择")
+                            .accessibilityLabel(Text("film.selected.accessibility"))
                     } else {
                         Color.clear
                     }

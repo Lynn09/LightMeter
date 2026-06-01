@@ -253,22 +253,29 @@ final class CameraManager: NSObject, ObservableObject {
     /// 锁定当前稳定曝光，避免校准采样期间自动曝光继续漂移
     @discardableResult
     func lockCurrentExposure() -> Bool {
-        guard let device = videoDeviceInput?.device,
-              device.isExposureModeSupported(.locked) else {
+        guard videoDeviceInput?.device != nil else {
             return false
         }
 
-        do {
-            try device.lockForConfiguration()
-            device.exposureMode = .locked
-            device.unlockForConfiguration()
-            return true
-        } catch {
-            Task { @MainActor in
-                self.error = .configurationFailed(error.localizedDescription)
+        sessionQueue.async { [weak self] in
+            guard let self,
+                  let device = self.videoDeviceInput?.device,
+                  device.isExposureModeSupported(.locked) else {
+                return
             }
-            return false
+
+            do {
+                try device.lockForConfiguration()
+                device.exposureMode = .locked
+                device.unlockForConfiguration()
+            } catch {
+                Task { @MainActor in
+                    self.error = .configurationFailed(error.localizedDescription)
+                }
+            }
         }
+
+        return true
     }
 
     /// 捕获一次校准样本：图像测得 EV 与 iPhone 曝光参数推导 EV100 的差异
@@ -616,11 +623,11 @@ final class CameraManager: NSObject, ObservableObject {
     private func nativeLensDisplayName(for device: AVCaptureDevice) -> String {
         switch device.deviceType {
         case .builtInTripleCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera:
-            return "Main Camera"
+            return String(localized: "camera.native.main")
         case .builtInUltraWideCamera:
-            return "Ultra Wide Camera"
+            return String(localized: "camera.native.ultraWide")
         case .builtInTelephotoCamera:
-            return "Telephoto Camera"
+            return String(localized: "camera.native.telephoto")
         default:
             return device.localizedName
         }
@@ -698,10 +705,10 @@ final class CameraManager: NSObject, ObservableObject {
     /// 当前焦段渲染方式说明
     private func lensRenderingMode(for device: AVCaptureDevice, zoomFactor: CGFloat) -> String {
         guard !device.virtualDeviceSwitchOverVideoZoomFactors.isEmpty else {
-            return zoomFactor > 1.01 ? "系统裁切" : "原生镜头"
+            return String(localized: "camera.lens.system")
         }
 
-        return "系统镜头"
+        return String(localized: "camera.lens.system")
     }
 
     /// 根据设备类型提供焦段降级估算
@@ -748,15 +755,15 @@ enum CameraError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .permissionDenied:
-            return "相机权限被拒绝。请在设置中允许访问相机。"
+            return String(localized: "camera.error.permissionDenied")
         case .deviceNotFound:
-            return "无法找到相机设备。"
+            return String(localized: "camera.error.deviceNotFound")
         case .cannotAddInput:
-            return "无法添加相机输入。"
+            return String(localized: "camera.error.cannotAddInput")
         case .cannotAddOutput:
-            return "无法添加视频输出。"
+            return String(localized: "camera.error.cannotAddOutput")
         case .configurationFailed(let message):
-            return "相机配置失败: \(message)"
+            return String(format: String(localized: "camera.error.configurationFailed"), message)
         }
     }
 }

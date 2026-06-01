@@ -16,7 +16,7 @@ struct CameraCalibrationSourceTest {
         precondition(source.contains("func lockCurrentExposure() -> Bool"))
         precondition(source.contains("func captureCalibrationSample() -> CalibrationSample?"))
         precondition(source.contains("private func nativeLensDisplayName(for device: AVCaptureDevice) -> String"))
-        precondition(source.contains("return \"Main Camera\""))
+        precondition(source.contains("String(localized: \"camera.native.main\")"))
         precondition(source.contains("MeteringCalibrationMath.ev100("))
         precondition(source.contains("device.exposureMode = .locked"))
         precondition(source.contains("device.lensAperture"))

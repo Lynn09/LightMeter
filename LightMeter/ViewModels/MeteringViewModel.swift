@@ -12,11 +12,11 @@ enum ExposureControlMode: String {
     var displayName: String {
         switch self {
         case .automatic:
-            return "自动联动"
+            return String(localized: "exposure.mode.automatic")
         case .aperturePriority:
-            return "光圈优先"
+            return String(localized: "exposure.mode.aperturePriority")
         case .shutterPriority:
-            return "快门优先"
+            return String(localized: "exposure.mode.shutterPriority")
         }
     }
 }
@@ -42,7 +42,7 @@ class MeteringViewModel: ObservableObject {
     }
 
     var calibrationStatusLabel: String {
-        activeCalibration?.statusLabel ?? "Uncalibrated"
+        activeCalibration?.statusLabel ?? String(localized: "calibration.status.uncalibrated")
     }
 
     // MARK: - 测光点

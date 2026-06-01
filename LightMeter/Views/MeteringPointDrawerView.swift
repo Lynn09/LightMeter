@@ -51,7 +51,7 @@ struct MeteringPointDrawerView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white.opacity(0.9))
 
-                Text("测光点")
+                Text("metering.points.title")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(.white)
 
@@ -102,7 +102,7 @@ struct MeteringPointDrawerView: View {
                     Button {
                         onRemeter(selectedPoint)
                     } label: {
-                        Label("重新测光", systemImage: "arrow.triangle.2.circlepath")
+                        Label("metering.remeter", systemImage: "arrow.triangle.2.circlepath")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(DrawerActionButtonStyle())
@@ -110,7 +110,7 @@ struct MeteringPointDrawerView: View {
                     Button(role: .destructive) {
                         onDelete(selectedPoint.id)
                     } label: {
-                        Label("删除", systemImage: "trash")
+                        Label("metering.delete", systemImage: "trash")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(DrawerActionButtonStyle(tint: .red, isDestructive: true))

@@ -79,7 +79,7 @@ struct ShutterSelectorView: View {
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .foregroundColor(Colors.textPrimary)
 
-            Text(selectedShutterSpeed == nil ? "自动" : "快门优先")
+            Text(selectedShutterSpeed == nil ? String(localized: "exposure.mode.autoShort") : String(localized: "exposure.mode.shutterPriority"))
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(selectedShutterSpeed == nil ? Colors.textSecondary : Colors.accent)
 
@@ -110,7 +110,7 @@ struct ShutterSelectorView: View {
                 )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(selectedShutterSpeed == nil ? "锁定快门优先" : "解除快门优先")
+        .accessibilityLabel(Text(selectedShutterSpeed == nil ? "exposure.accessibility.lockShutterPriority" : "exposure.accessibility.unlockShutterPriority"))
     }
 
     private var parameterAnchorTriangle: some View {

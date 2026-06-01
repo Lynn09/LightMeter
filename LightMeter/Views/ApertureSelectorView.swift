@@ -79,7 +79,7 @@ struct ApertureSelectorView: View {
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
                 .foregroundColor(Colors.textPrimary)
 
-            Text(selectedAperture == nil ? "自动" : "光圈优先")
+            Text(selectedAperture == nil ? String(localized: "exposure.mode.autoShort") : String(localized: "exposure.mode.aperturePriority"))
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(selectedAperture == nil ? Colors.textSecondary : Colors.accent)
 
@@ -110,7 +110,7 @@ struct ApertureSelectorView: View {
                 )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(selectedAperture == nil ? "锁定光圈优先" : "解除光圈优先")
+        .accessibilityLabel(Text(selectedAperture == nil ? "exposure.accessibility.lockAperturePriority" : "exposure.accessibility.unlockAperturePriority"))
     }
 
     private var parameterAnchorTriangle: some View {

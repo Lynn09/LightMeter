@@ -15,10 +15,12 @@
 		362D9786429D4CA90BE09006 /* CameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC7E868FA671CF4569B78E76 /* CameraManager.swift */; };
 		396F1D7DEA9946913931E54D /* PointEditMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB8D6E7E7EB93790A14FE8B0 /* PointEditMenuView.swift */; };
 		3CF724B12FC6B06000B415E1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3CF724B02FC6B06000B415E1 /* Assets.xcassets */; };
+		3D4E5F60718293A4B59A1B2C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 3D4E5F60718293A4B59A1B2B /* Localizable.strings */; };
 		433266275734B8545D853562 /* CameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59A159C394AA47B93E3EA360 /* CameraPreviewView.swift */; };
 		64631C282BDBDD187B04C57F /* MainMeteringView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D13E0B369CC2FD3A8F8E43C3 /* MainMeteringView.swift */; };
 		6912CD66DD75B05936D9D755 /* TopToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2590533435D44A142C4D10 /* TopToolbar.swift */; };
 		6B697BA7CABA9BBD44771C56 /* MeteringPoint.swift in Sources */ = {isa = PBXBuildFile; fileRef = D44659025A2122CFFF06FC7C /* MeteringPoint.swift */; };
+		6C7D8E9F0A1B2C3D4E5F6071 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6C7D8E9F0A1B2C3D4E5F6070 /* InfoPlist.strings */; };
 		7C4A1E4A12B94A5B8B7A1001 /* ShutterSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4A1E4912B94A5B8B7A1001 /* ShutterSelectorView.swift */; };
 		8D8EAB2411934F49A1110001 /* SubjectMeteringAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2311934F49A1110001 /* SubjectMeteringAnalyzer.swift */; };
 		8D8EAB2611934F49A1110002 /* StaticFramePreviewGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D8EAB2511934F49A1110002 /* StaticFramePreviewGeometry.swift */; };
@@ -43,11 +45,15 @@
 		3BFEE8A837DC50B195470871 /* ZoneScaleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoneScaleView.swift; sourceTree = "<group>"; };
 		3CF724B02FC6B06000B415E1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		4F4BAB4CD2C382B32711F111 /* LightMeterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightMeterApp.swift; sourceTree = "<group>"; };
+		4F5A6B7C8D9E0F1122334455 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		538367AB8E6535F926279438 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		59A159C394AA47B93E3EA360 /* CameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewView.swift; sourceTree = "<group>"; };
 		6481CE7D28BEE96594B5F5B4 /* TopToolbarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopToolbarView.swift; sourceTree = "<group>"; };
 		65B1B9166FE4F4A5ABB1607B /* MeteringViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeteringViewModel.swift; sourceTree = "<group>"; };
+		6A7B8C9D0E1F223344556677 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		6B7C8D9E0F1A223344556677 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		7C4A1E4912B94A5B8B7A1001 /* ShutterSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShutterSelectorView.swift; sourceTree = "<group>"; };
+		7D8E9F0A1B2C334455667788 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		886C6492BD1983B14D2DEC87 /* ExposureCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExposureCalculator.swift; sourceTree = "<group>"; };
 		8D8EAB2311934F49A1110001 /* SubjectMeteringAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubjectMeteringAnalyzer.swift; sourceTree = "<group>"; };
 		8D8EAB2511934F49A1110002 /* StaticFramePreviewGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StaticFramePreviewGeometry.swift; sourceTree = "<group>"; };
@@ -136,7 +142,9 @@
 			children = (
 				3CF724B02FC6B06000B415E1 /* Assets.xcassets */,
 				538367AB8E6535F926279438 /* Info.plist */,
+				6C7D8E9F0A1B2C3D4E5F6070 /* InfoPlist.strings */,
 				4F4BAB4CD2C382B32711F111 /* LightMeterApp.swift */,
+				3D4E5F60718293A4B59A1B2B /* Localizable.strings */,
 				1B65D6C48C8825659A6F6CC1 /* Managers */,
 				B10D1E67129FF2B975463907 /* Models */,
 				9F96BDD64C26B3B1F6623894 /* Utilities */,
@@ -204,6 +212,7 @@
 			knownRegions = (
 				Base,
 				en,
+				"zh-Hans",
 			);
 			mainGroup = 8B80E2A29F15E5BA8ABE2342;
 			minimizedProjectReferenceProxies = 1;
@@ -223,10 +232,33 @@
 			buildActionMask = 2147483647;
 			files = (
 				3CF724B12FC6B06000B415E1 /* Assets.xcassets in Resources */,
+				6C7D8E9F0A1B2C3D4E5F6071 /* InfoPlist.strings in Resources */,
+				3D4E5F60718293A4B59A1B2C /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		3D4E5F60718293A4B59A1B2B /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				4F5A6B7C8D9E0F1122334455 /* en */,
+				6A7B8C9D0E1F223344556677 /* zh-Hans */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+		6C7D8E9F0A1B2C3D4E5F6070 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				6B7C8D9E0F1A223344556677 /* en */,
+				7D8E9F0A1B2C334455667788 /* zh-Hans */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin PBXSourcesBuildPhase section */
 		5533F8349B450B600B746FDD /* Sources */ = {

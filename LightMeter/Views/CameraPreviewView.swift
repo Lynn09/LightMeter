@@ -205,7 +205,7 @@ struct CameraPreviewView: View {
             HStack(spacing: 6) {
                 Image(systemName: "scope")
                     .font(.system(size: 14, weight: .semibold))
-                Text("主体测光")
+                Text("preview.subjectMetering")
                     .font(.system(size: 13, weight: .semibold))
             }
             .foregroundColor(.white)

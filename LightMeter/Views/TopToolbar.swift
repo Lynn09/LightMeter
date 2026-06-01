@@ -81,7 +81,7 @@ struct TopToolbar: View {
                 .overlay(activeHighlight(isActive: false, color: Colors.textPrimary))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Settings")
+        .accessibilityLabel(Text("toolbar.settings.accessibility"))
     }
 
     private var filmButton: some View {

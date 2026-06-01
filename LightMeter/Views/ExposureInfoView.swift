@@ -123,7 +123,7 @@ struct ExposureInfoView: View {
                     Image(systemName: "camera.aperture")
                         .font(.system(size: 10))
                         .foregroundColor(viewModel.isApertureLocked ? Color(hex: "#007AFF") : .gray)
-                    Text("光圈")
+                    Text("exposure.aperture")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(viewModel.isApertureLocked ? Color(hex: "#007AFF") : .gray)
 
@@ -167,7 +167,7 @@ struct ExposureInfoView: View {
                     Image(systemName: "stopwatch")
                         .font(.system(size: 10))
                         .foregroundColor(viewModel.isShutterLocked ? Color(hex: "#007AFF") : .gray)
-                    Text("快门")
+                    Text("exposure.shutter")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(viewModel.isShutterLocked ? Color(hex: "#007AFF") : .gray)
 

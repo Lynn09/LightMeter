@@ -46,11 +46,7 @@ struct MainMeteringView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            if !isCalibrationActive {
-                meteringInterface
-            } else {
-                calibrationPreviewInterface
-            }
+            meteringInterface
 
             if showingFilmSelector && !isCalibrationActive {
                 filmSelectorOverlay
@@ -118,12 +114,16 @@ struct MainMeteringView: View {
                 }
             )
             .frame(height: Layout.toolbarHeight)
+            .opacity(isCalibrationActive ? 0 : 1)
+            .allowsHitTesting(!isCalibrationActive)
 
             cameraPreviewContent
                 .overlay(alignment: .bottom) {
                     meteringPointDrawerOverlay
                         .padding(.horizontal, Layout.horizontalPadding)
                         .padding(.bottom, Layout.previewControlClearance)
+                        .opacity(isCalibrationActive ? 0 : 1)
+                        .allowsHitTesting(!isCalibrationActive)
                 }
 
             ZoneScaleView(
@@ -141,17 +141,16 @@ struct MainMeteringView: View {
             )
             .frame(height: Layout.zoneScaleHeight)
             .padding(.horizontal, Layout.horizontalPadding)
+            .opacity(isCalibrationActive ? 0 : 1)
+            .allowsHitTesting(!isCalibrationActive)
 
             ExposureInfoView(viewModel: viewModel)
                 .frame(height: Layout.exposureInfoHeight)
                 .padding(.horizontal, Layout.horizontalPadding)
                 .padding(.bottom, 20)
+                .opacity(isCalibrationActive ? 0 : 1)
+                .allowsHitTesting(!isCalibrationActive)
         }
-    }
-
-    private var calibrationPreviewInterface: some View {
-        cameraPreviewContent
-            .ignoresSafeArea(edges: .bottom)
     }
 
     private var cameraPreviewContent: some View {
@@ -310,7 +309,7 @@ struct MainMeteringView: View {
     private func calibrationCaptureOverlay(mode: CalibrationCaptureMode) -> some View {
         CalibrationCaptureOverlay(
             mode: mode,
-            nativeLensName: viewModel.activeNativeLensInfo?.name ?? "Unknown native lens",
+            nativeLensName: viewModel.activeNativeLensInfo?.name ?? String(localized: "settings.noNativeLens"),
             sampleCount: calibrationSamples.count,
             message: calibrationMessage,
             onCancel: {
@@ -405,16 +404,21 @@ struct MainMeteringView: View {
     }
 
     private func startCalibrationCapture(_ mode: CalibrationCaptureMode, referenceEV: Double? = nil) {
-        cameraManager.resumeLivePreview()
-        cameraManager.startSession()
         professionalReferenceEV = referenceEV
         calibrationSamples = []
         calibrationMessage = nil
-        _ = cameraManager.lockCurrentExposure()
 
         withAnimation(.spring(response: 0.24, dampingFraction: 0.9)) {
             activeCalibrationMode = mode
         }
+
+        prepareCameraForCalibrationCapture()
+    }
+
+    private func prepareCameraForCalibrationCapture() {
+        cameraManager.resumeLivePreview()
+        cameraManager.startSession()
+        cameraManager.lockCurrentExposure()
     }
 
     private func startCameraSessionIfNeeded() async {
@@ -426,13 +430,13 @@ struct MainMeteringView: View {
         switch mode {
         case .professional:
             guard let professionalReferenceEV else {
-                calibrationMessage = "Enter a reference EV before sampling."
+                calibrationMessage = String(localized: "calibration.message.enterReferenceEV")
                 return
             }
 
             let measuredBrightness = cameraManager.getCenterWeightedBrightness()
             guard let cameraReferenceEV = cameraManager.currentMeteringReferenceEV else {
-                calibrationMessage = "No camera exposure reference available."
+                calibrationMessage = String(localized: "calibration.message.noExposureReference")
                 return
             }
             guard viewModel.saveProfessionalCalibration(
@@ -440,42 +444,46 @@ struct MainMeteringView: View {
                 cameraReferenceEV: cameraReferenceEV,
                 measuredBrightness: measuredBrightness
             ) else {
-                calibrationMessage = "Calibration sample is invalid. Re-aim and sample again."
+                calibrationMessage = String(localized: "calibration.message.invalidSample")
                 return
             }
-            calibrationMessage = "Professional calibration saved."
+            calibrationMessage = String(localized: "calibration.message.professionalSaved")
             activeCalibrationMode = nil
 
         case .standard:
             guard let sample = cameraManager.captureCalibrationSample() else {
-                calibrationMessage = "No camera sample available."
+                calibrationMessage = String(localized: "calibration.message.noCameraSample")
                 return
             }
 
             calibrationSamples.append(sample)
             if calibrationSamples.count >= mode.requiredSamples {
                 guard viewModel.saveCalibration(level: .standard, samples: calibrationSamples) else {
-                    calibrationMessage = "Samples are outside the trusted range. Re-aim at an 18% gray card."
+                    calibrationMessage = String(localized: "calibration.message.standardRejected")
                     calibrationSamples = []
                     return
                 }
-                calibrationMessage = "Standard calibration saved."
+                calibrationMessage = String(localized: "calibration.message.standardSaved")
                 activeCalibrationMode = nil
             } else {
-                calibrationMessage = "Sample \(calibrationSamples.count)/\(mode.requiredSamples) captured."
+                calibrationMessage = String(
+                    format: String(localized: "calibration.message.sampleCaptured"),
+                    calibrationSamples.count,
+                    mode.requiredSamples
+                )
             }
 
         case .quick:
             guard let sample = cameraManager.captureCalibrationSample() else {
-                calibrationMessage = "No camera sample available."
+                calibrationMessage = String(localized: "calibration.message.noCameraSample")
                 return
             }
 
             guard viewModel.saveCalibration(level: .quick, samples: [sample]) else {
-                calibrationMessage = "Quick calibration was rejected. Aim at a middle-tone area and try again."
+                calibrationMessage = String(localized: "calibration.message.quickRejected")
                 return
             }
-            calibrationMessage = "Quick calibration saved."
+            calibrationMessage = String(localized: "calibration.message.quickSaved")
             activeCalibrationMode = nil
         }
     }
@@ -489,22 +497,22 @@ private enum CalibrationCaptureMode {
     var title: String {
         switch self {
         case .professional:
-            return "Professional Calibration"
+            return String(localized: "calibration.professional.title")
         case .standard:
-            return "Standard Calibration"
+            return String(localized: "calibration.standard.title")
         case .quick:
-            return "Quick Calibration"
+            return String(localized: "calibration.quick.title")
         }
     }
 
     var instruction: String {
         switch self {
         case .professional:
-            return "Aim the center frame at the gray card measured by your physical meter."
+            return String(localized: "calibration.professional.instruction")
         case .standard:
-            return "Fill the center frame with an 18% gray card and capture five samples."
+            return String(localized: "calibration.standard.instruction")
         case .quick:
-            return "Aim at the scene you want to use as the temporary iPhone reference."
+            return String(localized: "calibration.quick.instruction")
         }
     }
 
@@ -584,7 +592,7 @@ private struct CalibrationCaptureOverlay: View {
 
     private var bottomControls: some View {
         HStack(spacing: 12) {
-            Button("Cancel", action: onCancel)
+            Button("calibration.cancel", action: onCancel)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.white.opacity(0.8))
                 .frame(height: 44)
@@ -610,9 +618,13 @@ private struct CalibrationCaptureOverlay: View {
 
     private var captureTitle: String {
         if mode.requiredSamples > 1 {
-            return "Sample \(sampleCount + 1)/\(mode.requiredSamples)"
+            return String(
+                format: String(localized: "calibration.sampleProgress"),
+                sampleCount + 1,
+                mode.requiredSamples
+            )
         }
-        return "Capture"
+        return String(localized: "calibration.capture")
     }
 }
 

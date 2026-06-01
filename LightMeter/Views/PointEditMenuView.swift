@@ -37,7 +37,7 @@ struct PointEditMenuView: View {
             VStack(spacing: 12) {
                 // 重新测光按钮
                 menuButton(
-                    title: "重新测光",
+                    title: String(localized: "metering.remeter"),
                     icon: "arrow.counterclockwise",
                     color: .blue
                 ) {
@@ -55,7 +55,7 @@ struct PointEditMenuView: View {
 
                 // 删除按钮
                 menuButton(
-                    title: "删除",
+                    title: String(localized: "metering.delete"),
                     icon: "trash",
                     color: .red
                 ) {
@@ -78,7 +78,7 @@ struct PointEditMenuView: View {
             HStack(spacing: 4) {
                 Image(systemName: "info.circle")
                     .font(.system(size: 11))
-                Text("锁定光圈后，每个测光点的快门速度会根据其EV值自动计算")
+                Text("metering.lockedApertureHint")
                     .font(.system(size: 11))
                     .multilineTextAlignment(.center)
             }
@@ -169,7 +169,7 @@ struct PointEditMenuView: View {
                 Image(systemName: "eye.fill")
                     .font(.system(size: 12))
                     .foregroundColor(Color(hex: "#FF9500"))
-                Text("调试信息")
+                Text("metering.debug.title")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(Color(hex: "#FF9500"))
                 Spacer()
@@ -178,7 +178,7 @@ struct PointEditMenuView: View {
             // 显示当前测光点的亮度数据
             VStack(spacing: 4) {
                 HStack {
-                    Text("亮度值:")
+                    Text("metering.debug.brightness")
                         .font(.system(size: 11))
                         .foregroundColor(.gray)
                     Spacer()
@@ -213,7 +213,7 @@ struct PointEditMenuView: View {
                         .padding(.vertical, 2)
 
                     HStack {
-                        Text("计算光圈:")
+                        Text("metering.debug.calculatedAperture")
                             .font(.system(size: 11))
                             .foregroundColor(.gray)
                         Spacer()
@@ -223,7 +223,7 @@ struct PointEditMenuView: View {
                     }
 
                     HStack {
-                        Text("计算快门:")
+                        Text("metering.debug.calculatedShutter")
                             .font(.system(size: 11))
                             .foregroundColor(.gray)
                         Spacer()
@@ -240,7 +240,7 @@ struct PointEditMenuView: View {
                         .padding(.vertical, 2)
 
                     HStack {
-                        Text("最后测光亮度:")
+                        Text("metering.debug.lastBrightness")
                             .font(.system(size: 10))
                             .foregroundColor(Color(hex: "#FF9500"))
                         Spacer()
@@ -250,7 +250,7 @@ struct PointEditMenuView: View {
                     }
 
                     HStack {
-                        Text("测光位置:")
+                        Text("metering.debug.location")
                             .font(.system(size: 10))
                             .foregroundColor(Color(hex: "#FF9500"))
                         Spacer()
@@ -297,7 +297,7 @@ struct PointEditMenuView: View {
                 Image(systemName: "location.fill")
                     .font(.system(size: 10))
                     .foregroundColor(.gray)
-                Text(String(format: "位置: (%.1f%%, %.1f%%)", point.x * 100, point.y * 100))
+                Text(String(format: String(localized: "metering.positionFormat"), point.x * 100, point.y * 100))
                     .font(.system(size: 12))
                     .foregroundColor(.gray)
             }
@@ -339,7 +339,7 @@ struct PointEditMenuView: View {
                 Image(systemName: viewModel.isApertureLocked ? "lock.fill" : "stopwatch")
                     .font(.system(size: 9))
                     .foregroundColor(viewModel.isApertureLocked ? Color(hex: "#34C759") : .gray)
-                Text(viewModel.isApertureLocked ? "快门*" : "快门")
+                Text(viewModel.isApertureLocked ? String(localized: "exposure.shutterLocked") : String(localized: "exposure.shutter"))
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(viewModel.isApertureLocked ? Color(hex: "#34C759") : .gray)
             }

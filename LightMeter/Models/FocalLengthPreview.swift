@@ -32,16 +32,19 @@ struct CameraLensInfo: Equatable {
         equivalentFocalLength: nil,
         baseEquivalentFocalLength: nil,
         zoomFactor: 1,
-        displayName: "镜头 --",
-        renderingMode: "未知"
+        displayName: String(localized: "focalLength.lensUnknown"),
+        renderingMode: String(localized: "camera.lens.system")
     )
 
     static func makeDisplayName(equivalentFocalLength: Double?) -> String {
         guard let equivalentFocalLength else {
-            return "镜头 --"
+            return String(localized: "focalLength.lensUnknown")
         }
 
-        return "手机 \(Int(round(equivalentFocalLength)))mm"
+        return String(
+            format: String(localized: "focalLength.phoneFormat"),
+            Int(round(equivalentFocalLength))
+        )
     }
 }
 

@@ -1,96 +1,114 @@
-# LightMeter - 胶片测光表
+# Film Light Meter App
 
-基于安塞尔·亚当斯区域曝光法（Zone System）的 iOS 胶片测光表应用，专为胶片摄影爱好者设计。
+A mobile light meter app designed for film photographers who want a practical, affordable alternative to dedicated handheld light meters.
 
-## 功能特性
+The app uses the phone camera to estimate scene brightness and converts it into usable exposure recommendations, including aperture, shutter speed, and ISO combinations. It is designed around real film-shooting workflows such as spot metering, center-weighted metering, exposure compensation, and gray-card calibration.
 
-- **实时取景测光**：使用手机摄像头实时取景，点击画面测光
-- **11区梯度条**：可视化展示 Zone 0-X，显示宽容度标记和测光点分布
-- **胶片预设**：支持 Velvia 50、Provia 100F、Ektachrome 等反转片
-- **曝光计算**：自动计算推荐光圈、快门、ISO 组合
+## Why This Project
 
-## 项目结构
+Handheld light meters are reliable, but they are often expensive and not always convenient to carry. For many film photographers, especially beginners, the phone camera is already available and capable of providing useful brightness information.
 
-```
-light-meter/
-├── LightMeter/              # 主项目代码
-│   ├── App/                 # 应用入口
-│   │   └── LightMeterApp.swift
-│   ├── Models/              # 数据模型
-│   │   ├── FilmPreset.swift
-│   │   ├── MeteringPoint.swift
-│   │   └── ExposureCalculator.swift
-│   ├── Views/               # 视图组件
-│   │   ├── MainMeteringView.swift
-│   │   ├── ZoneScaleView.swift
-│   │   ├── MeteringPointView.swift
-│   │   ├── FilmSelectorView.swift
-│   │   └── PointEditMenuView.swift
-│   ├── ViewModels/          # 视图模型
-│   │   └── MeteringViewModel.swift
-│   └── Resources/           # 资源文件
-│       └── Assets.xcassets
-├── features/                # Feature 详细文档
-├── design.md                # 产品设计文档
-├── design-tokens.md         # 设计令牌
-├── tasklist.md              # 开发任务清单
-└── README.md                # 本文件
-```
+This project explores how a smartphone can be used as a practical reflective light meter by combining camera brightness sampling, exposure value calculation, calibration, and a photographer-friendly user interface.
 
-## 开发状态
+## Features
 
-查看 [tasklist.md](tasklist.md) 了解当前开发进度。
+* Camera-based reflective metering
+* Spot metering for selected areas of the frame
+* Center-weighted metering for general shooting
+* Manual film ISO selection
+* Aperture-priority exposure calculation
+* Shutter-speed recommendation based on standard camera shutter steps
+* Exposure compensation support
+* Gray-card calibration for improved consistency
+* Film-photography-oriented workflow and UI
 
-查看 [features/](features/) 目录了解每个 Feature 的详细开发计划。
+## Core Concept
 
-## 设计要求
+The app estimates exposure using the relationship between aperture, shutter speed, ISO, and exposure value.
 
-- **平台**: iOS 16.0+
-- **语言**: Swift 5.9
-- **框架**: SwiftUI
-- **设备**: iPhone (Portrait only)
-- **主题**: Dark Mode only
+At a high level, the workflow is:
 
-## 设计规范
-
-详见 [design.md](design.md) 和 [design-tokens.md](design-tokens.md)。
-
-## 开发指南
-
-### 环境要求
-
-- Xcode 15.0+
-- iOS 16.0+ Simulator
-- Swift 5.9+
-
-### 构建项目
-
-```bash
-# 使用 Xcode 打开项目
-open LightMeter.xcodeproj
-
-# 或使用 xcodebuild
-xcodebuild -project LightMeter.xcodeproj -scheme LightMeter -destination 'platform=iOS Simulator,name=iPhone 15 Pro' build
+```text
+Camera brightness sampling
+→ Scene brightness estimation
+→ EV calculation
+→ ISO / aperture / shutter-speed conversion
+→ User-facing exposure recommendation
 ```
 
-### 运行测试
+For example, after estimating the scene exposure value, the app can recommend combinations such as:
 
-```bash
-xcodebuild test -project LightMeter.xcodeproj -scheme LightMeter -destination 'platform=iOS Simulator,name=iPhone 15 Pro'
+```text
+ISO 400
+f/8
+1/125s
 ```
 
-## 贡献指南
+The goal is not to fully replace a professional incident light meter, but to provide a practical and accessible reflective metering tool for everyday film photography.
 
-1. 查看 [tasklist.md](tasklist.md) 选择一个未完成的任务
-2. 查看对应的 Feature 文档了解详细开发计划
-3. 创建分支进行开发
-4. 完成后更新任务状态
+## Gray-Card Calibration
+
+Because different phone cameras, sensors, lenses, and image-processing pipelines behave differently, the app supports gray-card calibration.
+
+The calibration workflow helps the app understand how a standard middle-gray reference appears on the specific device. This makes the metering result more consistent across different lighting environments and phone models.
+
+Calibration can help correct:
+
+* Device-specific sensor response
+* Lens and camera pipeline differences
+* Brightness interpretation bias
+* Exposure offset between the phone camera and film shooting workflow
+
+## AI-Assisted Development
+
+This project was developed with the help of OpenAI Codex as an AI pair-programming agent.
+
+I used a “vibe coding” workflow to quickly turn product ideas into working features. Codex was used to assist with:
+
+* Rapid prototyping of UI interactions
+* Camera API integration
+* Exposure calculation logic
+* Refactoring and code organization
+* Debugging implementation details
+* Exploring alternative product flows
+
+The AI-generated code was not used blindly. I reviewed, tested, modified, and integrated the implementation manually to ensure the app’s behavior matched the intended photography workflow.
+
+This project was also an experiment in AI-assisted software development: using Codex not just to generate isolated snippets, but to continuously support product iteration from concept to functional application.
+
+## Tech Highlights
+
+* Mobile camera integration
+* Real-time brightness sampling
+* Exposure value calculation
+* Manual ISO / aperture / shutter mapping
+* Calibration-based correction
+* Photographer-focused interaction design
+* AI-assisted development workflow with Codex
+
+## Limitations
+
+This app works as a reflective light meter, meaning it measures the light reflected from the subject or scene. Like all reflective meters, it can be affected by subject reflectance.
+
+For example:
+
+* Snow or white walls may cause underexposure
+* Dark clothing or black surfaces may cause overexposure
+* Backlit scenes may require manual exposure compensation
+* Incident metering still requires a dedicated light meter or diffuser-based setup
+
+For best results, users should combine the app with gray-card calibration, exposure compensation, and practical film photography judgment.
+
+## Roadmap
+
+* Zone System support
+* Multi-point metering
+* Incident-metering simulation with diffuser accessory
+* Film stock presets
+* Calibration profiles per device and camera lens
+* Exposure history and shooting notes
+* Apple Watch / widget support
 
 ## License
 
-MIT License
-
-## 致谢
-
-- 设计灵感来自安塞尔·亚当斯的区域曝光法
-- 胶片预设数据参考各胶片厂商官方资料
+This project is for educational and personal photography use.

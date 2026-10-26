@@ -1,4 +1,6 @@
 name: LightMeter
+options:
+  xcodeVersion: "27.0"
 targets:
   LightMeter:
     type: application
@@ -9,6 +11,8 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: LightMeter/Info.plist
+        # 使用所选 Xcode 的最新 iOS SDK；deploymentTarget 是最低系统版本。
+        SDKROOT: iphoneos
         PRODUCT_BUNDLE_IDENTIFIER: com.yourname.LightMeter
         PRODUCT_NAME: LightMeter
         SWIFT_VERSION: "5.9"
@@ -22,10 +26,6 @@ targets:
       path: LightMeter/Info.plist
       properties:
         NSCameraUsageDescription: "LightMeter 需要访问您的相机来进行实时测光。相机画面仅用于曝光分析和测光点标记，不会被保存或上传到任何地方。"
-        UILaunchStoryboardName: ""
+        UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
-          UISceneConfigurations:
-            UIWindowSceneSessionRoleApplication:
-              - UISceneConfigurationName: "Default Configuration"
-                UISceneDelegateClassName: "SceneDelegate"

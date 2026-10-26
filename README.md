@@ -112,3 +112,28 @@ For best results, users should combine the app with gray-card calibration, expos
 ## License
 
 This project is for educational and personal photography use.
+
+## iOS 27 兼容性
+
+应用使用所选 Xcode 自带的最新 iOS SDK 构建，最低部署版本仍为 iOS 16.0。
+支持新系统不需要把最低部署版本提高到 iOS 27。Swift Package 的最低版本仍为 iOS 17。
+
+应用通过 `LightMeterApp` 的 SwiftUI `App` / `WindowGroup` 管理场景；
+Info.plist 不再引用项目中不存在的 UIKit `SceneDelegate`，并使用系统启动屏配置。
+`project.yml` 同步维护这些设置，重新生成工程时会保留。
+
+运行模拟器 Debug 和真机 Release 的无签名兼容性构建：
+
+```bash
+bash scripts/check-ios27-compatibility.sh
+```
+
+构建检查不能替代设备测试。发布前需在 iOS 27 真机检查相机授权（允许及拒绝）、
+实时预览与点击测光、前后台切换、胶片选择及曝光调节。
+
+2026-10-26 验证结果：Xcode 27.1 / iOS 27.1 SDK 下，模拟器 Debug（arm64 / x86_64）
+和真机 Release（arm64）无签名构建均通过。本机尚未安装 iOS 27 模拟器运行时，
+未完成 iOS 27 启动及真机相机测试。现有 `CameraManager` 仍有并发隔离警告，
+保留 Swift 5 模式；这些警告需要在未来切换 Swift 6 语言模式前处理。
+
+系统升级核对参考：[Apple iOS 27 发布说明](https://developer.apple.com/documentation/ios-ipados-release-notes/ios-ipados-27-release-notes)。

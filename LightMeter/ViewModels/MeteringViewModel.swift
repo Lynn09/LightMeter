@@ -22,6 +22,10 @@ class MeteringViewModel: ObservableObject {
             updateExposureParameters()
         }
     }
+    var showRangefinder: Bool {
+        get { mode == .rangefinder }
+        set { mode = newValue ? .rangefinder : activeMethod }
+    }
     @Published var selectedFilm: FilmPreset = .provia100F
     @Published var meteringPoints: [MeteringPoint] = []
     @Published var selectedPointId: UUID?

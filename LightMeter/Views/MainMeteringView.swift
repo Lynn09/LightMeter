@@ -77,6 +77,17 @@ struct MainMeteringView: View {
                     .background(.black)
                 }
             }
+            .overlay(alignment: .bottomTrailing) {
+                if isMeteringMode {
+                    HStack(spacing: 0) {
+                        methodButton(.spot, label: "单点测光", symbol: "circle.fill")
+                        methodButton(.metering, label: "多点测光", symbol: "circle.grid.2x2.fill")
+                    }
+                    .padding(2)
+                    .background(.black.opacity(0.74), in: Capsule())
+                    .padding(12)
+                }
+            }
             .task {
                 await cameraManager.requestPermission()
                 guard !Task.isCancelled else { return }
@@ -88,10 +99,9 @@ struct MainMeteringView: View {
                 cameraManager.stopSession()
             }
 
-            Picker("取景模式", selection: $viewModel.mode) {
-                Text("单点").tag(ViewfinderMode.spot)
-                Text("多点").tag(ViewfinderMode.metering)
-                Text("测距").tag(ViewfinderMode.rangefinder)
+            Picker("取景模式", selection: $viewModel.showRangefinder) {
+                Text("测光").tag(false)
+                Text("测距").tag(true)
             }
             .pickerStyle(.segmented)
             .frame(maxWidth: 290)
@@ -128,6 +138,28 @@ struct MainMeteringView: View {
     }
 
     private var isMeteringMode: Bool { viewModel.mode != .rangefinder }
+
+    private func methodButton(_ method: ViewfinderMode, label: String, symbol: String) -> some View {
+        let selected = viewModel.mode == method
+        return Button {
+            viewModel.mode = method
+        } label: {
+            ZStack {
+                RoundedRectangle(cornerRadius: 3)
+                    .strokeBorder(lineWidth: 1.5)
+                    .frame(width: 24, height: 18)
+                Image(systemName: symbol)
+                    .font(.system(size: method == .spot ? 6 : 11, weight: .medium))
+            }
+            .foregroundStyle(selected ? Color.yellow : .white)
+            .frame(width: 44, height: 44)
+            .background(.white.opacity(selected ? 0.15 : 0), in: Capsule())
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
 
     private var meteringControls: some View {
         VStack(spacing: 0) {

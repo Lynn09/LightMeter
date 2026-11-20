@@ -115,9 +115,11 @@ private struct FilmOptionRow: View {
         Button(action: onSelect) {
             HStack(spacing: 16) {
                 // 颜色圆点
-                Circle()
-                    .fill(film.swiftColor)
-                    .frame(width: 16, height: 16)
+                Image(film.packagingImageName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 64, height: 72)
+                    .accessibilityLabel(film.name)
 
                 // 胶片信息
                 VStack(alignment: .leading, spacing: 4) {
@@ -125,12 +127,16 @@ private struct FilmOptionRow: View {
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
 
-                    Text("\(film.zoneRange) · \(film.description)")
+                    Text("\(film.zoneRange) · \(film.localizedDescription)")
                         .font(.system(size: 13))
                         .foregroundColor(Color(hex: "#8E8E93")!)
                 }
 
                 Spacer()
+
+                Text("ISO \(film.iso)")
+                    .font(.system(size: 12, weight: .medium, design: .monospaced))
+                    .foregroundStyle(film.swiftColor)
 
                 // 选中图标
                 if isSelected {

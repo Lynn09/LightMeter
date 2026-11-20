@@ -29,6 +29,7 @@
 		27BF00000000000000000003 /* CenterRangefinderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27AF00000000000000000003 /* CenterRangefinderView.swift */; };
 		27BF00000000000000000004 /* CameraStartupRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27AF00000000000000000004 /* CameraStartupRecovery.swift */; };
 		27BF00000000000000000005 /* CameraMeteringReading.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27AF00000000000000000005 /* CameraMeteringReading.swift */; };
+		27BF00000000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 27AF00000000000000000006; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +57,7 @@
 		27AF00000000000000000003 /* CenterRangefinderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CenterRangefinderView.swift; sourceTree = "<group>"; };
 		27AF00000000000000000004 /* CameraStartupRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraStartupRecovery.swift; sourceTree = "<group>"; };
 		27AF00000000000000000005 /* CameraMeteringReading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraMeteringReading.swift; sourceTree = "<group>"; };
+		27AF00000000000000000006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -121,6 +123,7 @@
 		A01057C35C248096046CD8A8 /* LightMeter */ = {
 			isa = PBXGroup;
 			children = (
+				27AF00000000000000000006 /* Assets.xcassets */,
 				538367AB8E6535F926279438 /* Info.plist */,
 				4F4BAB4CD2C382B32711F111 /* LightMeterApp.swift */,
 				1B65D6C48C8825659A6F6CC1 /* Managers */,
@@ -152,6 +155,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = C2F164187A0DB389EA44519C /* Build configuration list for PBXNativeTarget "LightMeter" */;
 			buildPhases = (
+				27CF00000000000000000006 /* Resources */,
 				5533F8349B450B600B746FDD /* Sources */,
 			);
 			buildRules = (
@@ -197,6 +201,10 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		27CF00000000000000000006 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (27BF00000000000000000006 /* Assets.xcassets in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		5533F8349B450B600B746FDD /* Sources */ = {

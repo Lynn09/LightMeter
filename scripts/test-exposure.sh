@@ -17,3 +17,7 @@ swiftc -module-cache-path "$test_dir/module-cache" \
     LightMeter/ViewModels/MeteringViewModel.swift tests/MeteringPipelineTests.swift \
     -o "$test_dir/pipeline-tests"
 "$test_dir/pipeline-tests"
+swiftc -module-cache-path "$test_dir/module-cache" \
+    LightMeter/Models/FilmPreset.swift tests/FilmPresetsTests.swift \
+    -o "$test_dir/film-tests"
+"$test_dir/film-tests"

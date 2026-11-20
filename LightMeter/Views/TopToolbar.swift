@@ -3,6 +3,7 @@ import SwiftUI
 struct TopToolbar: View {
     let currentFilm: FilmPreset
     let currentEV: Double?
+    let lockedDistance: Double?
     let isExpanded: Bool
     let onFilmButtonTap: () -> Void
 
@@ -14,7 +15,15 @@ struct TopToolbar: View {
                         .resizable().scaledToFit().frame(width: 34, height: 44)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(currentFilm.name).font(.headline)
-                        Text(currentFilm.zoneRange).font(.caption).foregroundStyle(.secondary)
+                        HStack(spacing: 6) {
+                            Text(currentFilm.zoneRange)
+                            if let lockedDistance {
+                                Label(String(format: "%.2f m", lockedDistance), systemImage: "lock.fill")
+                                    .foregroundStyle(.orange)
+                                    .accessibilityLabel(String(format: "距离已锁定 %.2f 米", lockedDistance))
+                            }
+                        }
+                        .font(.caption).foregroundStyle(.secondary)
                     }
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down").font(.caption)
                 }

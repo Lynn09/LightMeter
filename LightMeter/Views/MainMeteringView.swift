@@ -24,14 +24,15 @@ struct MainMeteringView: View {
         VStack(spacing: 0) {
             TopToolbar(currentFilm: viewModel.selectedFilm,
                        currentEV: viewModel.selectedPoint?.ev ?? viewModel.currentExposure.ev,
+                       lockedDistance: cameraManager.rangefinder.isLocked ? cameraManager.rangefinder.meters : nil,
                        isExpanded: expandedControl == .film) {
                 toggle(.film)
             }
-            if expandedControl == .film {
-                FilmSelectorView(selectedFilm: viewModel.selectedFilm) { film in
-                    if film != viewModel.selectedFilm { viewModel.selectFilm(film) }
-                    expandedControl = nil
-                }
+            .opacity(isMeteringMode ? 1 : 0)
+            .allowsHitTesting(isMeteringMode)
+            .accessibilityHidden(!isMeteringMode)
+            .overlay {
+                if !isMeteringMode { Label("激光测距", systemImage: "ruler").font(.headline) }
             }
 
             CameraPreviewView(
@@ -45,10 +46,8 @@ struct MainMeteringView: View {
                     expandedControl = nil
                     viewModel.selectPoint(id: point.id)
                 },
-                rangefinder: cameraManager.rangefinder,
-                rangefinderStatus: cameraManager.hasPermission ? cameraManager.rangefinderStatus : "需要相机权限",
-                supportsLiDAR: cameraManager.supportsLiDAR,
-                onToggleDistanceLock: { cameraManager.toggleDistanceLock() },
+                mode: viewModel.mode,
+                isDistanceLocked: cameraManager.rangefinder.isLocked,
                 cameraError: cameraManager.error?.localizedDescription,
                 onRetryCamera: {
                     cameraManager.stopSession()
@@ -61,11 +60,21 @@ struct MainMeteringView: View {
                 previewRevision: cameraManager.previewRevision,
                 onPreviewStateChange: { cameraManager.previewDidChange($0) },
                 onPreviewLayerAvailable: { cameraManager.registerPreviewLayer($0) },
-                isMetering: cameraManager.isMetering,
-                meteringMessage: cameraManager.meteringMessage,
-                previewCompensation: viewModel.isManualExposure ? viewModel.manualExposureOffset - viewModel.shutterSpeedOffset - viewModel.dragShutterOffset : -viewModel.shutterSpeedOffset - viewModel.dragShutterOffset
+                isMetering: isMeteringMode && cameraManager.isMetering,
+                meteringMessage: isMeteringMode ? cameraManager.meteringMessage : nil,
+                previewCompensation: !isMeteringMode ? 0 : viewModel.isManualExposure ? viewModel.manualExposureOffset - viewModel.shutterSpeedOffset - viewModel.dragShutterOffset : -viewModel.shutterSpeedOffset - viewModel.dragShutterOffset
             )
             .frame(maxHeight: .infinity)
+            .overlay(alignment: .top) {
+                if isMeteringMode && expandedControl == .film {
+                    FilmSelectorView(selectedFilm: viewModel.selectedFilm) { film in
+                        if film != viewModel.selectedFilm { viewModel.selectFilm(film) }
+                        expandedControl = nil
+                    }
+                    .padding(.top, 6)
+                    .background(.black)
+                }
+            }
             .task {
                 await cameraManager.requestPermission()
                 guard !Task.isCancelled else { return }
@@ -77,6 +86,50 @@ struct MainMeteringView: View {
                 cameraManager.stopSession()
             }
 
+            Picker("取景模式", selection: $viewModel.mode) {
+                Text("测光").tag(ViewfinderMode.metering)
+                Text("测距").tag(ViewfinderMode.rangefinder)
+            }
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 230)
+            .padding(.vertical, 6)
+            .onChange(of: viewModel.mode) { _ in
+                expandedControl = nil
+                cameraManager.cancelMetering()
+            }
+
+            meteringControls
+                .opacity(isMeteringMode ? 1 : 0)
+                .allowsHitTesting(isMeteringMode)
+                .accessibilityHidden(!isMeteringMode)
+                .overlay {
+                    if !isMeteringMode {
+                        DistanceControls(reading: cameraManager.rangefinder,
+                                         status: cameraManager.hasPermission ? cameraManager.rangefinderStatus : "需要相机权限",
+                                         isSupported: cameraManager.supportsLiDAR,
+                                         onToggleLock: cameraManager.toggleDistanceLock)
+                    }
+                }
+        }
+        .background(Color.black.ignoresSafeArea())
+        .preferredColorScheme(.dark)
+        .onReceive(distanceClock) { _ in cameraManager.expireDistance() }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active {
+                Task {
+                    await cameraManager.requestPermission()
+                    if scenePhase != .background { cameraManager.startSession() }
+                }
+            } else if phase == .background {
+                cameraManager.stopSession()
+            }
+        }
+    }
+
+    private var isMeteringMode: Bool { viewModel.mode == .metering }
+
+    private var meteringControls: some View {
+        VStack(spacing: 0) {
             HStack {
                 if let point = viewModel.selectedPoint {
                     PointEditMenuView(viewModel: viewModel, point: point, cameraManager: cameraManager)
@@ -115,19 +168,6 @@ struct MainMeteringView: View {
                     else { viewModel.unlockAperture() }
                     expandedControl = nil
                 }
-            }
-        }
-        .background(Color.black.ignoresSafeArea())
-        .preferredColorScheme(.dark)
-        .onReceive(distanceClock) { _ in cameraManager.expireDistance() }
-        .onChange(of: scenePhase) { phase in
-            if phase == .active {
-                Task {
-                    await cameraManager.requestPermission()
-                    if scenePhase != .background { cameraManager.startSession() }
-                }
-            } else if phase == .background {
-                cameraManager.stopSession()
             }
         }
     }

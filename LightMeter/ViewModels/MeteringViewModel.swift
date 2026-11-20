@@ -2,8 +2,11 @@ import Foundation
 import SwiftUI
 import Combine
 
+enum ViewfinderMode { case metering, rangefinder }
+
 @MainActor
 class MeteringViewModel: ObservableObject {
+    @Published var mode: ViewfinderMode = .metering
     @Published var selectedFilm: FilmPreset = .provia100F
     @Published var meteringPoints: [MeteringPoint] = []
     @Published var selectedPointId: UUID?
@@ -18,7 +21,7 @@ class MeteringViewModel: ObservableObject {
     @Published var isManualShutterAdjusted = false
     let maxMeteringPoints = 5
 
-    var canAddMeteringPoint: Bool { meteringPoints.count < maxMeteringPoints }
+    var canAddMeteringPoint: Bool { mode == .metering && meteringPoints.count < maxMeteringPoints }
     var selectedPoint: MeteringPoint? { meteringPoints.first { $0.id == selectedPointId } }
     var isApertureLocked: Bool { lockedAperture != nil }
     var effectiveExposureAdjustment: Double { currentExposure.adjustment }

@@ -33,6 +33,13 @@ enum MeteringPipelineTests {
         check(model.selectedPoint?.id == pointID, "Tap a point to inspect its settings inline")
         model.selectPoint(id: pointID)
         check(model.selectedPoint == nil, "Tap the selected point again to return to average exposure")
+        check(model.mode == .metering, "Start in exposure metering mode")
+        model.mode = .rangefinder
+        model.addMeteringPoint(x: 0.3, y: 0.4, ev100: 15)
+        check(!model.canAddMeteringPoint && model.meteringPoints.count == 2, "Rangefinding must not add exposure samples")
+        model.mode = .metering
+        check(model.canAddMeteringPoint && model.lockedAperture == 8 && model.currentExposure.ev == 10.5,
+              "Returning from rangefinding preserves the exposure setup")
         let calibrated = MeteringViewModel()
         calibrated.addMeteringPoint(x: 0.5, y: 0.5, ev100: 10, rawEV100: 10, cameraID: "wide")
         calibrated.addMeteringPoint(x: 0.6, y: 0.6, ev100: 12, rawEV100: 12, cameraID: "other")

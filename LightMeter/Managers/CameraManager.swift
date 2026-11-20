@@ -202,8 +202,7 @@ final class CameraManager: NSObject, ObservableObject {
         print("[LightMeter camera] stop requested")
         #endif
         acceptsDepthReadings = false
-        measurementGeneration += 1
-        isMetering = false
+        cancelMetering()
         rangefinder.reset()
         startupRequestedAt = nil
         hasVideoFrames = false
@@ -395,6 +394,12 @@ final class CameraManager: NSObject, ObservableObject {
         }
     }
 
+    func cancelMetering() {
+        measurementGeneration += 1
+        isMetering = false
+        meteringMessage = nil
+    }
+
     /// Uses the preview layer's transform, including portrait rotation and aspect-fill crop.
     func meter(at normalizedPreviewPoint: CGPoint) async -> CameraMeteringReading? {
         guard !isMetering else { return nil }
@@ -450,6 +455,7 @@ final class CameraManager: NSObject, ObservableObject {
                 }
                 try await Task.sleep(nanoseconds: 80_000_000)
             }
+            guard generation == measurementGeneration else { return nil }
             meteringMessage = "光线尚未稳定或超出相机测光范围，请对准主体后重试。"
         } catch is CancellationError {
             return nil

@@ -24,10 +24,8 @@ struct CameraPreviewView: View {
     /// 点击测光点的回调
     let onPointTap: (MeteringPoint) -> Void
 
-    var rangefinder = RangefinderReading()
-    var rangefinderStatus = "此设备不支持 LiDAR 测距"
-    var supportsLiDAR = false
-    var onToggleDistanceLock: () -> Void = {}
+    var mode: ViewfinderMode = .metering
+    var isDistanceLocked = false
     var cameraError: String?
     var onRetryCamera: () -> Void = {}
     var isSessionRunning = false
@@ -60,26 +58,23 @@ struct CameraPreviewView: View {
                 }
 
                 // 测光点标记覆盖层
-                meteringPointsOverlay(in: geometry)
+                if mode == .metering {
+                    meteringPointsOverlay(in: geometry)
+                } else {
+                    CenterRangefinderView(isLocked: isDistanceLocked)
+                }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .clipped()
             .contentShape(Rectangle())
             .onTapGesture { location in
                 // 将点击坐标转换为归一化坐标 (0~1)
+                guard mode == .metering else { return }
                 let normalizedPoint = CGPoint(
                     x: location.x / geometry.size.width,
                     y: location.y / geometry.size.height
                 )
                 onTap(normalizedPoint)
-            }
-            .overlay {
-                CenterRangefinderView(
-                    reading: rangefinder,
-                    status: rangefinderStatus,
-                    isSupported: supportsLiDAR,
-                    onToggleLock: onToggleDistanceLock
-                )
             }
             .overlay(alignment: .top) {
                 if let cameraError {

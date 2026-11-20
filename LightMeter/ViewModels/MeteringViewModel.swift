@@ -2,11 +2,26 @@ import Foundation
 import SwiftUI
 import Combine
 
-enum ViewfinderMode { case metering, rangefinder }
+enum ViewfinderMode { case spot, metering, rangefinder }
 
 @MainActor
 class MeteringViewModel: ObservableObject {
-    @Published var mode: ViewfinderMode = .metering
+    private var inactivePoints: [MeteringPoint] = []
+    private var inactiveSelection: UUID?
+    private(set) var activeMethod: ViewfinderMode = .spot
+    @Published var mode: ViewfinderMode = .spot {
+        didSet {
+            guard mode != .rangefinder, activeMethod != mode else { return }
+            activeMethod = mode
+            let previousPoints = meteringPoints
+            meteringPoints = inactivePoints
+            inactivePoints = previousPoints
+            let previousSelection = selectedPointId
+            selectedPointId = inactiveSelection
+            inactiveSelection = previousSelection
+            updateExposureParameters()
+        }
+    }
     @Published var selectedFilm: FilmPreset = .provia100F
     @Published var meteringPoints: [MeteringPoint] = []
     @Published var selectedPointId: UUID?
@@ -21,7 +36,7 @@ class MeteringViewModel: ObservableObject {
     @Published var isManualShutterAdjusted = false
     let maxMeteringPoints = 5
 
-    var canAddMeteringPoint: Bool { mode == .metering && meteringPoints.count < maxMeteringPoints }
+    var canAddMeteringPoint: Bool { mode == .spot || (mode == .metering && meteringPoints.count < maxMeteringPoints) }
     var selectedPoint: MeteringPoint? { meteringPoints.first { $0.id == selectedPointId } }
     var isApertureLocked: Bool { lockedAperture != nil }
     var effectiveExposureAdjustment: Double { currentExposure.adjustment }
@@ -71,6 +86,7 @@ class MeteringViewModel: ObservableObject {
     }
     func addMeteringPoint(x: Double, y: Double, ev100: Double, rawEV100: Double? = nil, cameraID: String? = nil) {
         guard canAddMeteringPoint, ev100.isFinite else { return }
+        if mode == .spot { meteringPoints.removeAll() }
         var point = MeteringPoint(x: x, y: y, color: MeteringPoint.nextColor(for: meteringPoints.count), ev: ev100)
         point.rawEV100 = rawEV100 ?? ev100
         point.cameraID = cameraID
@@ -85,9 +101,13 @@ class MeteringViewModel: ObservableObject {
         updateExposureParameters()
     }
     func applyCalibration(cameraID: String, offset: Double) {
-        for index in meteringPoints.indices where meteringPoints[index].cameraID == cameraID {
-            if let raw = meteringPoints[index].rawEV100 { meteringPoints[index].ev = raw + offset }
+        func apply(to points: inout [MeteringPoint]) {
+            for index in points.indices where points[index].cameraID == cameraID {
+                if let raw = points[index].rawEV100 { points[index].ev = raw + offset }
+            }
         }
+        apply(to: &meteringPoints)
+        apply(to: &inactivePoints)
         updateExposureParameters()
     }
     func deleteMeteringPoint(id: UUID) {

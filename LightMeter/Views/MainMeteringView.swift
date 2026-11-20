@@ -42,7 +42,7 @@ struct MainMeteringView: View {
                 meteringPoints: viewModel.meteringPoints,
                 selectedPointId: viewModel.selectedPointId,
                 onTap: { location in
-                    handlePreviewTap(at: location)
+                    measure(at: location)
                 },
                 onPointTap: { point in
                     expandedControl = nil
@@ -89,11 +89,12 @@ struct MainMeteringView: View {
             }
 
             Picker("取景模式", selection: $viewModel.mode) {
-                Text("测光").tag(ViewfinderMode.metering)
+                Text("单点").tag(ViewfinderMode.spot)
+                Text("多点").tag(ViewfinderMode.metering)
                 Text("测距").tag(ViewfinderMode.rangefinder)
             }
             .pickerStyle(.segmented)
-            .frame(maxWidth: 230)
+            .frame(maxWidth: 290)
             .padding(.vertical, 6)
             .onChange(of: viewModel.mode) { _ in
                 expandedControl = nil
@@ -126,12 +127,25 @@ struct MainMeteringView: View {
         }
     }
 
-    private var isMeteringMode: Bool { viewModel.mode == .metering }
+    private var isMeteringMode: Bool { viewModel.mode != .rangefinder }
 
     private var meteringControls: some View {
         VStack(spacing: 0) {
             HStack {
-                if let point = viewModel.selectedPoint {
+                if viewModel.activeMethod == .spot {
+                    Text("用中央方框瞄准主体")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button {
+                        measure(at: CGPoint(x: 0.5, y: 0.5))
+                    } label: {
+                        Label(cameraManager.isMetering ? "测光中" : "测光", systemImage: "scope")
+                            .frame(minWidth: 76)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
+                    .disabled(!cameraManager.isRunning || cameraManager.isMetering)
+                } else if let point = viewModel.selectedPoint {
                     PointEditMenuView(viewModel: viewModel, point: point, cameraManager: cameraManager)
                         .id(point.id)
                 } else {
@@ -182,7 +196,7 @@ struct MainMeteringView: View {
 
     /// 处理预览区域点击 - 使用真实相机测光
     /// Wait for camera AE at the transformed point before recording EV100.
-    private func handlePreviewTap(at location: CGPoint) {
+    private func measure(at location: CGPoint) {
         guard viewModel.canAddMeteringPoint else {
             // 可以在这里添加提示：已达到最大测光点数量
             return

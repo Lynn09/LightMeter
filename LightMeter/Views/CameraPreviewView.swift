@@ -60,6 +60,13 @@ struct CameraPreviewView: View {
                 // 测光点标记覆盖层
                 if mode == .metering {
                     meteringPointsOverlay(in: geometry)
+                } else if mode == .spot {
+                    RoundedRectangle(cornerRadius: 3)
+                        .strokeBorder(isMetering ? Color.yellow : .white, lineWidth: 2)
+                        .frame(width: 46, height: 46)
+                        .shadow(radius: 2)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 } else {
                     CenterRangefinderView(isLocked: isDistanceLocked)
                 }

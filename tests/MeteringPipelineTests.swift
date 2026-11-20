@@ -7,6 +7,11 @@ enum MeteringPipelineTests {
             guard value() else { fatalError(message) }
         }
         let model = MeteringViewModel()
+        model.addMeteringPoint(x: 0.5, y: 0.5, ev100: 9)
+        model.addMeteringPoint(x: 0.5, y: 0.5, ev100: 12)
+        check(model.meteringPoints.count == 1 && model.currentExposure.ev == 12, "Center measurement replaces the previous sample")
+        model.mode = .metering
+        check(model.meteringPoints.isEmpty, "Spot samples do not enter the multi-point average")
         model.lockAperture(8)
         model.addMeteringPoint(x: 0.5, y: 0.5, ev100: 10.25)
         check(model.meteringPoints.count == 1, "Measured EV100 reaches the point model")
@@ -40,7 +45,10 @@ enum MeteringPipelineTests {
         model.mode = .metering
         check(model.canAddMeteringPoint && model.lockedAperture == 8 && model.currentExposure.ev == 10.5,
               "Returning from rangefinding preserves the exposure setup")
+        model.mode = .spot
+        check(model.currentExposure.ev == 12, "Return to the last spot reading")
         let calibrated = MeteringViewModel()
+        calibrated.mode = .metering
         calibrated.addMeteringPoint(x: 0.5, y: 0.5, ev100: 10, rawEV100: 10, cameraID: "wide")
         calibrated.addMeteringPoint(x: 0.6, y: 0.6, ev100: 12, rawEV100: 12, cameraID: "other")
         calibrated.applyCalibration(cameraID: "wide", offset: 0.7)

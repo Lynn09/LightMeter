@@ -149,7 +149,6 @@ struct MainMeteringView: View {
                     ApertureSelectorView(selectedAperture: viewModel.lockedAperture) { aperture in
                         if let aperture { viewModel.lockAperture(aperture) }
                         else { viewModel.unlockAperture() }
-                        expandedControl = nil
                     }
                     .transition(.opacity)
                 } else {

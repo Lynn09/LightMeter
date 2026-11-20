@@ -32,9 +32,9 @@ struct TopToolbar: View {
             .accessibilityHint("展开或收起胶片选择")
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
-                Text("EV100").font(.caption).foregroundStyle(.secondary)
-                Text(currentEV.flatMap { $0.isFinite ? String(format: "%.1f", $0) : nil } ?? "—")
-                    .font(.title2.weight(.semibold)).monospacedDigit()
+                Text("ISO \(currentFilm.iso)").font(.caption).foregroundStyle(.secondary)
+                Text("EV100  \(currentEV.flatMap { $0.isFinite ? String(format: "%.1f", $0) : nil } ?? "—")")
+                    .font(.headline.weight(.semibold)).monospacedDigit()
             }
         }
         .padding(.horizontal, 16)

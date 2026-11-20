@@ -17,172 +17,108 @@ struct MainMeteringView: View {
     @Environment(\.scenePhase) private var scenePhase
     private let distanceClock = Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()
 
-    // MARK: - State
-
-    @State private var showingFilmSelector = false
-    @State private var showingPointEditMenu = false
-    @State private var selectedPoint: MeteringPoint?
-
-    // MARK: - Constants
-
-    private enum Layout {
-        static let toolbarHeight: CGFloat = 64
-        static let zoneScaleHeight: CGFloat = 80
-        static let exposureInfoHeight: CGFloat = 80
-        static let horizontalPadding: CGFloat = 20
-    }
-
-    // MARK: - Body
+    private enum Control { case film, aperture }
+    @State private var expandedControl: Control?
 
     var body: some View {
-        ZStack {
-            // 背景
-            Color.black.ignoresSafeArea()
-
-            // 主要内容
-            VStack(spacing: 0) {
-                // 顶部工具栏
-                TopToolbar(
-                    currentFilm: viewModel.selectedFilm,
-                    currentEV: viewModel.meteringPoints.isEmpty ? nil : viewModel.currentExposure.ev,
-                    onFilmButtonTap: {
-                        showingFilmSelector = true
-                    }
-                )
-                .frame(height: Layout.toolbarHeight)
-
-                // 相机预览区域（真实相机）
-                CameraPreviewView(
-                    session: cameraManager.session,
-                    meteringPoints: viewModel.meteringPoints,
-                    selectedPointId: viewModel.selectedPointId,
-                    onTap: { location in
-                        handlePreviewTap(at: location)
-                    },
-                    onPointTap: { point in
-                        handlePointTap(point)
-                    },
-                    rangefinder: cameraManager.rangefinder,
-                    rangefinderStatus: cameraManager.hasPermission ? cameraManager.rangefinderStatus : "需要相机权限",
-                    supportsLiDAR: cameraManager.supportsLiDAR,
-                    onToggleDistanceLock: { cameraManager.toggleDistanceLock() },
-                    cameraError: cameraManager.error?.localizedDescription,
-                    onRetryCamera: {
-                        cameraManager.stopSession()
-                        Task {
-                            await cameraManager.requestPermission()
-                            if scenePhase != .background { cameraManager.startSession() }
-                        }
-                    },
-                    isSessionRunning: cameraManager.isRunning,
-                    previewRevision: cameraManager.previewRevision,
-                    onPreviewStateChange: { cameraManager.previewDidChange($0) },
-                    onPreviewLayerAvailable: { cameraManager.registerPreviewLayer($0) },
-                    isMetering: cameraManager.isMetering,
-                    meteringMessage: cameraManager.meteringMessage,
-                    previewCompensation: viewModel.isManualExposure ? viewModel.manualExposureOffset - viewModel.shutterSpeedOffset - viewModel.dragShutterOffset : -viewModel.shutterSpeedOffset - viewModel.dragShutterOffset
-                )
-                .frame(maxHeight: .infinity)
-                .task {
-                    await cameraManager.requestPermission()
-                    guard !Task.isCancelled else { return }
-                    // Initial appearance and permission sheets may still report .inactive.
-                    if scenePhase != .background { cameraManager.startSession() }
+        VStack(spacing: 0) {
+            TopToolbar(currentFilm: viewModel.selectedFilm,
+                       currentEV: viewModel.selectedPoint?.ev ?? viewModel.currentExposure.ev,
+                       isExpanded: expandedControl == .film) {
+                toggle(.film)
+            }
+            if expandedControl == .film {
+                FilmSelectorView(selectedFilm: viewModel.selectedFilm) { film in
+                    if film != viewModel.selectedFilm { viewModel.selectFilm(film) }
+                    expandedControl = nil
                 }
-                .onDisappear {
-                    // 停止相机会话
+            }
+
+            CameraPreviewView(
+                session: cameraManager.session,
+                meteringPoints: viewModel.meteringPoints,
+                selectedPointId: viewModel.selectedPointId,
+                onTap: { location in
+                    handlePreviewTap(at: location)
+                },
+                onPointTap: { point in
+                    expandedControl = nil
+                    viewModel.selectPoint(id: point.id)
+                },
+                rangefinder: cameraManager.rangefinder,
+                rangefinderStatus: cameraManager.hasPermission ? cameraManager.rangefinderStatus : "需要相机权限",
+                supportsLiDAR: cameraManager.supportsLiDAR,
+                onToggleDistanceLock: { cameraManager.toggleDistanceLock() },
+                cameraError: cameraManager.error?.localizedDescription,
+                onRetryCamera: {
                     cameraManager.stopSession()
+                    Task {
+                        await cameraManager.requestPermission()
+                        if scenePhase != .background { cameraManager.startSession() }
+                    }
+                },
+                isSessionRunning: cameraManager.isRunning,
+                previewRevision: cameraManager.previewRevision,
+                onPreviewStateChange: { cameraManager.previewDidChange($0) },
+                onPreviewLayerAvailable: { cameraManager.registerPreviewLayer($0) },
+                isMetering: cameraManager.isMetering,
+                meteringMessage: cameraManager.meteringMessage,
+                previewCompensation: viewModel.isManualExposure ? viewModel.manualExposureOffset - viewModel.shutterSpeedOffset - viewModel.dragShutterOffset : -viewModel.shutterSpeedOffset - viewModel.dragShutterOffset
+            )
+            .frame(maxHeight: .infinity)
+            .task {
+                await cameraManager.requestPermission()
+                guard !Task.isCancelled else { return }
+                // Initial appearance and permission sheets may still report .inactive.
+                if scenePhase != .background { cameraManager.startSession() }
+            }
+            .onDisappear {
+                // 停止相机会话
+                cameraManager.stopSession()
+            }
+
+            HStack {
+                if let point = viewModel.selectedPoint {
+                    PointEditMenuView(viewModel: viewModel, point: point, cameraManager: cameraManager)
+                        .id(point.id)
+                } else {
+                    Text(viewModel.meteringPoints.isEmpty ? "轻点取景画面测光" : "平均曝光 · \(viewModel.meteringPoints.count) 个点")
+                    Spacer()
+                    Text("滑动分区尺调快门")
+                        .foregroundStyle(.secondary)
                 }
-
-                // 11区梯度条（快门控制版本）
-                ZoneScaleView(
-                    minZone: viewModel.selectedFilm.minZone,
-                    maxZone: viewModel.selectedFilm.maxZone,
-                    meteringPoints: viewModel.meteringPoints,
-                    shutterSpeedOffset: viewModel.shutterSpeedOffset,
-                    dragOffset: viewModel.dragShutterOffset,
-                    onShutterOffsetChange: { offset in
-                        viewModel.updateShutterDragOffset(offset)
-                    },
-                    onShutterOffsetEnd: { offset in
-                        viewModel.endShutterDragWithOffset(offset)
-                    }
-                )
-                .frame(height: Layout.zoneScaleHeight)
-                .padding(.horizontal, Layout.horizontalPadding)
-
-                // 曝光参数栏
-                ExposureInfoView(
-                    viewModel: viewModel
-                )
-                .frame(height: Layout.exposureInfoHeight)
-                .padding(.horizontal, Layout.horizontalPadding)
-                .padding(.bottom, 20)
             }
+            .font(.footnote)
+            .frame(minHeight: 44)
+            .padding(.horizontal, 16)
+            ZoneScaleView(
+                minZone: viewModel.selectedFilm.minZone,
+                maxZone: viewModel.selectedFilm.maxZone,
+                meteringPoints: viewModel.meteringPoints,
+                shutterSpeedOffset: viewModel.shutterSpeedOffset,
+                dragOffset: viewModel.dragShutterOffset,
+                onShutterOffsetChange: { offset in
+                    viewModel.updateShutterDragOffset(offset)
+                },
+                onShutterOffsetEnd: { offset in
+                    viewModel.endShutterDragWithOffset(offset)
+                }
+            )
+            .padding(.horizontal, 16)
 
-            // 胶片选择弹窗
-            if showingFilmSelector {
-                FilmSelectorView(
-                    selectedFilm: .init(
-                        get: { viewModel.selectedFilm },
-                        set: { _ in }
-                    ),
-                    isPresented: $showingFilmSelector,
-                    onFilmSelected: { film in
-                        viewModel.selectFilm(film)
-                    }
-                )
+            ExposureInfoView(viewModel: viewModel, isExpanded: expandedControl == .aperture) {
+                toggle(.aperture)
             }
-
-            // 光圈选择弹窗
-            if viewModel.isApertureSelectorPresented {
-                ApertureSelectorView(
-                    selectedAperture: .init(
-                        get: { viewModel.lockedAperture },
-                        set: { _ in }
-                    ),
-                    isPresented: .init(
-                        get: { viewModel.isApertureSelectorPresented },
-                        set: { newValue in
-                            if !newValue {
-                                viewModel.closeApertureSelector()
-                            }
-                        }
-                    ),
-                    onApertureSelected: { aperture in
-                        if let aperture = aperture {
-                            viewModel.lockAperture(aperture)
-                        } else {
-                            viewModel.unlockAperture()
-                        }
-                        viewModel.closeApertureSelector()
-                    }
-                )
-            }
-
-            // 测光点编辑菜单
-            if showingPointEditMenu,
-               let point = selectedPoint {
-                // 透明遮罩层 - 点击关闭菜单
-                Color.black
-                    .opacity(0.3)
-                    .ignoresSafeArea()
-                    .onTapGesture {
-                        showingPointEditMenu = false
-                        selectedPoint = nil
-                    }
-
-                PointEditMenuView(
-                    viewModel: viewModel,
-                    point: point,
-                    onDismiss: {
-                        showingPointEditMenu = false
-                        selectedPoint = nil
-                    },
-                    cameraManager: cameraManager
-                )
+            if expandedControl == .aperture {
+                ApertureSelectorView(selectedAperture: viewModel.lockedAperture) { aperture in
+                    if let aperture { viewModel.lockAperture(aperture) }
+                    else { viewModel.unlockAperture() }
+                    expandedControl = nil
+                }
             }
         }
+        .background(Color.black.ignoresSafeArea())
+        .preferredColorScheme(.dark)
         .onReceive(distanceClock) { _ in cameraManager.expireDistance() }
         .onChange(of: scenePhase) { phase in
             if phase == .active {
@@ -213,17 +149,7 @@ struct MainMeteringView: View {
         }
     }
 
-    /// 处理测光点点击
-    private func handlePointTap(_ point: MeteringPoint) {
-        viewModel.selectPoint(id: point.id)
-        selectedPoint = point
-        showingPointEditMenu = true
+    private func toggle(_ control: Control) {
+        expandedControl = expandedControl == control ? nil : control
     }
-}
-
-// MARK: - Preview
-
-#Preview("Main Metering View") {
-    MainMeteringView()
-        .preferredColorScheme(.dark)
 }

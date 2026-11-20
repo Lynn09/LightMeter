@@ -28,6 +28,11 @@ enum MeteringPipelineTests {
         model.resetShutterOffset()
         model.addMeteringPoint(x: 0.2, y: 0.2, ev100: 10.75)
         check(abs(model.currentExposure.ev - 10.5) < 1e-9, "Average continuous EV values, not rounded Zones")
+        let pointID = model.meteringPoints[0].id
+        model.selectPoint(id: pointID)
+        check(model.selectedPoint?.id == pointID, "Tap a point to inspect its settings inline")
+        model.selectPoint(id: pointID)
+        check(model.selectedPoint == nil, "Tap the selected point again to return to average exposure")
         let calibrated = MeteringViewModel()
         calibrated.addMeteringPoint(x: 0.5, y: 0.5, ev100: 10, rawEV100: 10, cameraID: "wide")
         calibrated.addMeteringPoint(x: 0.6, y: 0.6, ev100: 12, rawEV100: 12, cameraID: "other")

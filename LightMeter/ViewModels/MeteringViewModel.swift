@@ -7,13 +7,11 @@ class MeteringViewModel: ObservableObject {
     @Published var selectedFilm: FilmPreset = .provia100F
     @Published var meteringPoints: [MeteringPoint] = []
     @Published var selectedPointId: UUID?
-    @Published var isPointEditMenuPresented = false
     @Published var currentExposure = ExposureResult.default
     @Published var manualExposureOffset = 0.0
     @Published var isManualExposure = false
     @Published var dragOffset = 0.0
     @Published var lockedAperture: Double?
-    @Published var isApertureSelectorPresented = false
     @Published var shutterSpeedOffset = 0.0
     @Published var dragShutterOffset = 0.0
     @Published var baseShutterSpeed = ExposureCalculator.baseShutterSpeed
@@ -45,8 +43,6 @@ class MeteringViewModel: ObservableObject {
         updateExposureParameters()
     }
     func unlockAperture() { lockedAperture = nil; updateExposureParameters() }
-    func toggleApertureSelector() { isApertureSelectorPresented.toggle() }
-    func closeApertureSelector() { isApertureSelectorPresented = false }
     func updateShutterDragOffset(_ offset: Double) {
         guard offset.isFinite else { return }
         dragShutterOffset = min(5, max(-5, offset + shutterSpeedOffset)) - shutterSpeedOffset
@@ -93,11 +89,10 @@ class MeteringViewModel: ObservableObject {
     }
     func deleteMeteringPoint(id: UUID) {
         meteringPoints.removeAll { $0.id == id }
-        if selectedPointId == id { selectedPointId = nil; isPointEditMenuPresented = false }
+        if selectedPointId == id { selectedPointId = nil }
         updateExposureParameters()
     }
-    func selectPoint(id: UUID) { selectedPointId = id; isPointEditMenuPresented = true }
-    func closePointEditMenu() { isPointEditMenuPresented = false }
+    func selectPoint(id: UUID) { selectedPointId = selectedPointId == id ? nil : id }
 
     private func updateExposureParameters() {
         guard !meteringPoints.isEmpty else {

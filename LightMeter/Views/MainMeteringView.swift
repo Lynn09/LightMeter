@@ -17,6 +17,8 @@ struct MainMeteringView: View {
     @Environment(\.scenePhase) private var scenePhase
     private let distanceClock = Timer.publish(every: 0.25, on: .main, in: .common).autoconnect()
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     private enum Control { case film, aperture }
     @State private var expandedControl: Control?
 
@@ -98,18 +100,16 @@ struct MainMeteringView: View {
                 cameraManager.cancelMetering()
             }
 
-            meteringControls
-                .opacity(isMeteringMode ? 1 : 0)
-                .allowsHitTesting(isMeteringMode)
-                .accessibilityHidden(!isMeteringMode)
-                .overlay {
-                    if !isMeteringMode {
-                        DistanceControls(reading: cameraManager.rangefinder,
-                                         status: cameraManager.hasPermission ? cameraManager.rangefinderStatus : "需要相机权限",
-                                         isSupported: cameraManager.supportsLiDAR,
-                                         onToggleLock: cameraManager.toggleDistanceLock)
-                    }
+            if isMeteringMode {
+                meteringControls
+            } else {
+                meteringControls.hidden().overlay {
+                    DistanceControls(reading: cameraManager.rangefinder,
+                                     status: cameraManager.hasPermission ? cameraManager.rangefinderStatus : "需要相机权限",
+                                     isSupported: cameraManager.supportsLiDAR,
+                                     onToggleLock: cameraManager.toggleDistanceLock)
                 }
+            }
         }
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
@@ -137,37 +137,44 @@ struct MainMeteringView: View {
                 } else {
                     Text(viewModel.meteringPoints.isEmpty ? "轻点取景画面测光" : "平均曝光 · \(viewModel.meteringPoints.count) 个点")
                     Spacer()
-                    Text("滑动分区尺调快门")
+                    Text(expandedControl == .aperture ? "选择光圈档位" : "滑动分区尺调快门")
                         .foregroundStyle(.secondary)
                 }
             }
             .font(.footnote)
             .frame(minHeight: 44)
             .padding(.horizontal, 16)
-            ZoneScaleView(
-                minZone: viewModel.selectedFilm.minZone,
-                maxZone: viewModel.selectedFilm.maxZone,
-                meteringPoints: viewModel.meteringPoints,
-                shutterSpeedOffset: viewModel.shutterSpeedOffset,
-                dragOffset: viewModel.dragShutterOffset,
-                onShutterOffsetChange: { offset in
-                    viewModel.updateShutterDragOffset(offset)
-                },
-                onShutterOffsetEnd: { offset in
-                    viewModel.endShutterDragWithOffset(offset)
+            ZStack {
+                if expandedControl == .aperture {
+                    ApertureSelectorView(selectedAperture: viewModel.lockedAperture) { aperture in
+                        if let aperture { viewModel.lockAperture(aperture) }
+                        else { viewModel.unlockAperture() }
+                        expandedControl = nil
+                    }
+                    .transition(.opacity)
+                } else {
+                    ZoneScaleView(
+                        minZone: viewModel.selectedFilm.minZone,
+                        maxZone: viewModel.selectedFilm.maxZone,
+                        meteringPoints: viewModel.meteringPoints,
+                        shutterSpeedOffset: viewModel.shutterSpeedOffset,
+                        dragOffset: viewModel.dragShutterOffset,
+                        onShutterOffsetChange: { offset in
+                            viewModel.updateShutterDragOffset(offset)
+                        },
+                        onShutterOffsetEnd: { offset in
+                            viewModel.endShutterDragWithOffset(offset)
+                        }
+                    )
+                    .padding(.horizontal, 16)
+                    .transition(.opacity)
                 }
-            )
-            .padding(.horizontal, 16)
+            }
+            .frame(minHeight: 80)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: expandedControl == .aperture)
 
             ExposureInfoView(viewModel: viewModel, isExpanded: expandedControl == .aperture) {
                 toggle(.aperture)
-            }
-            if expandedControl == .aperture {
-                ApertureSelectorView(selectedAperture: viewModel.lockedAperture) { aperture in
-                    if let aperture { viewModel.lockAperture(aperture) }
-                    else { viewModel.unlockAperture() }
-                    expandedControl = nil
-                }
             }
         }
     }

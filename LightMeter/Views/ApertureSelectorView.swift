@@ -5,12 +5,12 @@ struct ApertureSelectorView: View {
     let onApertureSelected: (Double?) -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             option("自动", aperture: nil)
             Divider().frame(height: 20)
             ScrollViewReader { proxy in
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 2) {
                         ForEach(ExposureCalculator.standardApertures, id: \.self) { value in
                             option(ExposureCalculator.formatAperture(value), aperture: value)
                                 .id(value)
@@ -22,16 +22,22 @@ struct ApertureSelectorView: View {
                 }
             }
         }
+        .padding(.horizontal, 6)
+        .background(.white.opacity(0.10), in: Capsule())
         .padding(.horizontal, 16)
     }
 
     private func option(_ title: String, aperture: Double?) -> some View {
-        Button { onApertureSelected(aperture) } label: {
-            Text(title).font(.subheadline.monospacedDigit())
-                .padding(.horizontal, 8).frame(minWidth: 44, minHeight: 44)
-                .background(.white.opacity(selectedAperture == aperture ? 0.18 : 0), in: RoundedRectangle(cornerRadius: 6))
+        let selected = selectedAperture == aperture
+        return Button { onApertureSelected(aperture) } label: {
+            Text(title)
+                .font(.subheadline.weight(selected ? .bold : .medium).monospacedDigit())
+                .foregroundStyle(selected ? Color.yellow : .white)
+                .padding(.horizontal, 6)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(selectedAperture == aperture ? .isSelected : [])
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

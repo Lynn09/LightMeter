@@ -14,11 +14,8 @@
 | 5 | [测光点视图和编辑菜单](测光点视图和编辑菜单.md) | [ ] 未完成 | 4h |
 | 6 | [曝光参数栏和计算逻辑](曝光参数栏和计算逻辑.md) | [ ] 未完成 | 3h |
 | 7 | [集成测试和Bug修复](集成测试和Bug修复.md) | [ ] 未完成 | 4h |
-| 10 | [光圈快门联动控制](exposure-coupled-controls.md) | [x] 已完成 | 4h |
-| 11 | [静态帧主体测光](static-frame-subject-metering.md) | [x] 已完成 | 4h |
-| 13 | [镜头焦段显示与取景适配](lens-focal-length-display.md) | [x] 已完成 | 3h |
 
-**总预估工作量：41小时**
+**总预估工作量：30小时**
 
 ## 依赖关系
 
@@ -78,6 +75,8 @@ Task #3 (工具栏) ← → Task #4 (Zone条) ← → Task #5 (测光点)
 
 ## 相关文档
 
+- [测光算法调研与精度修订](../research/exposure-metering-accuracy.md) - EV100、相机元数据测光与对照校准
+- [中央准心 LiDAR 测距](lidar-rangefinder.md) - 已实现，待 LiDAR 真机验收
 - [tasklist.md](../tasklist.md) - 详细的任务清单
 - [design.md](../design.md) - 产品设计文档
 - [design-tokens.md](../design-tokens.md) - 设计令牌

@@ -2,25 +2,26 @@ import SwiftUI
 
 // MARK: - ExposureInfoView
 
-/// 曝光参数栏视图，显示可调整的光圈和快门
+/// 曝光参数栏视图，显示光圈、快门、ISO
 struct ExposureInfoView: View {
     @ObservedObject var viewModel: MeteringViewModel
 
     /// 格式化曝光补偿显示
     private var compensationText: String {
-        let compensation = viewModel.isManualExposure ? viewModel.manualExposureOffset : viewModel.shutterSpeedOffset
+        let compensation = viewModel.isManualExposure ? viewModel.manualExposureOffset : 0
         if compensation > 0 {
             return String(format: "+%.1f", compensation)
         } else if compensation < 0 {
             return String(format: "%.1f", compensation)
         } else {
-            return "±0.0"
+            return "自动"
         }
     }
 
     /// 获取当前要显示的光圈值
     /// 优先级：1. 选中测光点的曝光参数 2. 锁定的光圈值 3. 全局平均曝光
     private var displayAperture: String {
+        if viewModel.meteringPoints.isEmpty && !viewModel.isApertureLocked { return "—" }
         // 1. 如果有选中的测光点，优先显示该点的光圈
         if let selectedPoint = viewModel.selectedPoint {
             // 如果该点有曝光参数，直接显示
@@ -46,6 +47,7 @@ struct ExposureInfoView: View {
     /// 获取当前要显示的快门速度
     /// 如果有选中的测光点且该点有曝光参数，显示该点的快门；否则显示全局快门
     private var displayShutterSpeed: String {
+        if viewModel.meteringPoints.isEmpty { return "—" }
         if let selectedPoint = viewModel.selectedPoint,
            let params = selectedPoint.exposureParams {
             return params.formattedShutterSpeed
@@ -53,19 +55,29 @@ struct ExposureInfoView: View {
         return viewModel.currentExposure.formattedShutterSpeed
     }
 
+    /// 获取当前要显示的ISO
+    /// 如果有选中的测光点且该点有曝光参数，显示该点的ISO；否则显示全局ISO
+    private var displayISO: String {
+        if let selectedPoint = viewModel.selectedPoint,
+           let params = selectedPoint.exposureParams {
+            return params.formattedISO
+        }
+        return viewModel.currentExposure.formattedISO
+    }
+
     var body: some View {
         VStack(spacing: 4) {
             // 曝光补偿指示器
             HStack(spacing: 4) {
-                Image(systemName: modeIcon)
+                Image(systemName: viewModel.isManualExposure ? "hand.tap.fill" : "gear")
                     .font(.system(size: 10))
-                Text(viewModel.exposureControlMode.displayName)
+                Text(viewModel.isManualExposure ? "手动" : "自动")
                     .font(.system(size: 11, weight: .medium))
                 Text("·")
                     .font(.system(size: 11))
                 Text(compensationText)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundColor(viewModel.exposureControlMode == .automatic ? .gray : Color(hex: "#34C759"))
+                    .foregroundColor(viewModel.isManualExposure ? Color(hex: "#34C759") : .gray)
             }
             .foregroundColor(.gray)
             .padding(.horizontal, 8)
@@ -75,7 +87,7 @@ struct ExposureInfoView: View {
                     .fill(Color.white.opacity(0.05))
             )
 
-            // 光圈、快门
+            // 光圈、快门、ISO
             HStack(spacing: 0) {
                 // 光圈（可点击）
                 apertureParameterItem
@@ -83,8 +95,22 @@ struct ExposureInfoView: View {
                 Divider()
                     .background(Color.white.opacity(0.2))
 
-                // 快门（可点击）
-                shutterParameterItem
+                // 快门 - 显示选中测光点的独立快门或全局快门
+                parameterItem(
+                    label: "快门",
+                    value: displayShutterSpeed,
+                    icon: "stopwatch"
+                )
+
+                Divider()
+                    .background(Color.white.opacity(0.2))
+
+                // ISO - 显示选中测光点的独立ISO或全局ISO
+                parameterItem(
+                    label: "ISO",
+                    value: displayISO,
+                    icon: "film"
+                )
             }
             .frame(height: 70)
             .padding(.horizontal, 16)
@@ -101,29 +127,16 @@ struct ExposureInfoView: View {
 
     // MARK: - 光圈参数项（带锁定状态和点击）
 
-    private var modeIcon: String {
-        switch viewModel.exposureControlMode {
-        case .automatic:
-            return "link"
-        case .aperturePriority:
-            return "camera.aperture"
-        case .shutterPriority:
-            return "stopwatch.fill"
-        }
-    }
-
     private var apertureParameterItem: some View {
         Button(action: {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
-                viewModel.toggleApertureSelector()
-            }
+            viewModel.toggleApertureSelector()
         }) {
             VStack(spacing: 4) {
                 HStack(spacing: 4) {
                     Image(systemName: "camera.aperture")
                         .font(.system(size: 10))
                         .foregroundColor(viewModel.isApertureLocked ? Color(hex: "#007AFF") : .gray)
-                    Text("exposure.aperture")
+                    Text("光圈")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(viewModel.isApertureLocked ? Color(hex: "#007AFF") : .gray)
 
@@ -154,46 +167,22 @@ struct ExposureInfoView: View {
         .buttonStyle(PlainButtonStyle())
     }
 
-    // MARK: - 快门参数项（带锁定状态和点击）
-
-    private var shutterParameterItem: some View {
-        Button(action: {
-            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
-                viewModel.toggleShutterSelector()
+    private func parameterItem(label: String, value: String, icon: String) -> some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 10))
+                    .foregroundColor(.gray)
+                Text(label)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(.gray)
             }
-        }) {
-            VStack(spacing: 4) {
-                HStack(spacing: 4) {
-                    Image(systemName: "stopwatch")
-                        .font(.system(size: 10))
-                        .foregroundColor(viewModel.isShutterLocked ? Color(hex: "#007AFF") : .gray)
-                    Text("exposure.shutter")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(viewModel.isShutterLocked ? Color(hex: "#007AFF") : .gray)
 
-                    if viewModel.isShutterLocked {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundColor(Color(hex: "#007AFF"))
-                    }
-                }
-
-                HStack(spacing: 4) {
-                    Text(displayShutterSpeed)
-                        .font(.system(size: 20, weight: .semibold, design: .rounded))
-                        .foregroundColor(viewModel.isShutterLocked ? Color(hex: "#007AFF") : .white)
-                        .minimumScaleFactor(0.8)
-
-                    if viewModel.isShutterLocked {
-                        Image(systemName: "chevron.up")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(Color(hex: "#007AFF")!.opacity(0.7))
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
+            Text(value)
+                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                .foregroundColor(.white)
+                .minimumScaleFactor(0.8)
         }
-        .buttonStyle(PlainButtonStyle())
+        .frame(maxWidth: .infinity)
     }
-
 }

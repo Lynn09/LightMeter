@@ -13,12 +13,12 @@ struct PointEditMenuView: View {
     // 从父视图传入的 CameraManager，确保使用同一个实例
     @ObservedObject var cameraManager: CameraManager
 
-    // MARK: - Debug State
-
-    /// 最后测量的原始亮度值
-    @State private var lastRawBrightness: Double = 0
-    /// 最后测量的位置
-    @State private var lastMeasurementLocation: CGPoint = .zero
+    @State private var showingCalibration = false
+    @State private var referenceEV = ""
+    @State private var calibrationError: String?
+    private var displayedPoint: MeteringPoint {
+        viewModel.meteringPoints.first { $0.id == point.id } ?? point
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,25 +37,19 @@ struct PointEditMenuView: View {
             VStack(spacing: 12) {
                 // 重新测光按钮
                 menuButton(
-                    title: String(localized: "metering.remeter"),
+                    title: "重新测光",
                     icon: "arrow.counterclockwise",
                     color: .blue
                 ) {
-                    let pointLocation = CGPoint(
-                        x: point.x,
-                        y: point.y
-                    )
-                    let brightness = cameraManager.getBrightness(at: pointLocation)
-                    viewModel.remeterPoint(
-                        id: point.id,
-                        brightness: brightness,
-                        cameraReferenceEV: cameraManager.currentMeteringReferenceEV
-                    )
+                    Task {
+                        guard let reading = await cameraManager.meter(at: CGPoint(x: displayedPoint.x, y: displayedPoint.y)) else { return }
+                        viewModel.remeterPoint(id: displayedPoint.id, reading: reading)
+                    }
                 }
 
                 // 删除按钮
                 menuButton(
-                    title: String(localized: "metering.delete"),
+                    title: "删除",
                     icon: "trash",
                     color: .red
                 ) {
@@ -70,15 +64,21 @@ struct PointEditMenuView: View {
                 .padding(.top, 24)
                 .padding(.bottom, 20)
 
-            // 调试信息：亮度原始数据
-            debugBrightnessInfo
-                .padding(.bottom, 20)
+            if displayedPoint.rawEV100 != nil && displayedPoint.cameraID != nil {
+                Button("对照测光表校准") {
+                    referenceEV = String(format: "%.2f", displayedPoint.ev)
+                    showingCalibration = true
+                }
+                .font(.system(size: 13))
+                .padding(.bottom, 16)
+                if let calibrationError { Text(calibrationError).font(.caption).foregroundStyle(.orange) }
+            }
 
             // 提示文字
             HStack(spacing: 4) {
                 Image(systemName: "info.circle")
                     .font(.system(size: 11))
-                Text("metering.lockedApertureHint")
+                Text("锁定光圈后，每个测光点的快门速度会根据其EV值自动计算")
                     .font(.system(size: 11))
                     .multilineTextAlignment(.center)
             }
@@ -94,6 +94,29 @@ struct PointEditMenuView: View {
             RoundedRectangle(cornerRadius: 24)
                 .stroke(Color.white.opacity(0.1), lineWidth: 1)
         )
+        .alert("对照校准", isPresented: $showingCalibration) {
+            TextField("参考 EV100", text: $referenceEV)
+                .keyboardType(.numbersAndPunctuation)
+            Button("应用") {
+                guard let reference = Double(referenceEV.replacingOccurrences(of: ",", with: ".")),
+                      let raw = displayedPoint.rawEV100, let cameraID = displayedPoint.cameraID,
+                      let offset = cameraManager.calibrate(rawEV100: raw, referenceEV100: reference, cameraID: cameraID) else {
+                    calibrationError = "请输入有效 EV100，校准差应在 ±5 档内。"
+                    return
+                }
+                viewModel.applyCalibration(cameraID: cameraID, offset: offset)
+                calibrationError = nil
+            }
+            Button("清除校准") {
+                if let cameraID = displayedPoint.cameraID,
+                   let offset = cameraManager.calibrate(rawEV100: 0, referenceEV100: 0, cameraID: cameraID) {
+                    viewModel.applyCalibration(cameraID: cameraID, offset: offset)
+                }
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("请在相同光线下对准同一块灰卡测光，再填入参考测光表的 ISO 100 EV。校准按手机镜头保存。")
+        }
     }
 
     // MARK: - 测光点预览
@@ -102,22 +125,22 @@ struct PointEditMenuView: View {
         ZStack {
             // 发光效果
             RoundedRectangle(cornerRadius: 8)
-                .fill(point.swiftColor.opacity(0.3))
+                .fill(displayedPoint.swiftColor.opacity(0.3))
                 .frame(width: 60, height: 60)
                 .blur(radius: 15)
 
             // 主方框
             RoundedRectangle(cornerRadius: 8)
-                .fill(point.swiftColor.opacity(0.2))
+                .fill(displayedPoint.swiftColor.opacity(0.2))
                 .frame(width: 50, height: 50)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
-                        .stroke(point.swiftColor, lineWidth: 3)
+                        .stroke(displayedPoint.swiftColor, lineWidth: 3)
                 )
 
             // 十字准星
             PlusShape()
-                .stroke(point.swiftColor, lineWidth: 2)
+                .stroke(displayedPoint.swiftColor, lineWidth: 2)
                 .frame(width: 30, height: 30)
         }
     }
@@ -162,126 +185,14 @@ struct PointEditMenuView: View {
 
     // MARK: - 测光信息
 
-    /// 调试信息：显示原始亮度数据
-    private var debugBrightnessInfo: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Image(systemName: "eye.fill")
-                    .font(.system(size: 12))
-                    .foregroundColor(Color(hex: "#FF9500"))
-                Text("metering.debug.title")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Color(hex: "#FF9500"))
-                Spacer()
-            }
-
-            // 显示当前测光点的亮度数据
-            VStack(spacing: 4) {
-                HStack {
-                    Text("metering.debug.brightness")
-                        .font(.system(size: 11))
-                        .foregroundColor(.gray)
-                    Spacer()
-                    Text(String(format: "%.4f", point.evToBrightness()))
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(.white)
-                }
-
-                HStack {
-                    Text("EV值:")
-                        .font(.system(size: 11))
-                        .foregroundColor(.gray)
-                    Spacer()
-                    Text(String(format: "%.2f", point.ev))
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(.white)
-                }
-
-                HStack {
-                    Text("Zone:")
-                        .font(.system(size: 11))
-                        .foregroundColor(.gray)
-                    Spacer()
-                    Text("Zone \(point.zone)")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundColor(point.swiftColor)
-                }
-
-                if let params = point.exposureParams {
-                    Divider()
-                        .background(Color.white.opacity(0.1))
-                        .padding(.vertical, 2)
-
-                    HStack {
-                        Text("metering.debug.calculatedAperture")
-                            .font(.system(size: 11))
-                            .foregroundColor(.gray)
-                        Spacer()
-                        Text(params.formattedAperture)
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(.white)
-                    }
-
-                    HStack {
-                        Text("metering.debug.calculatedShutter")
-                            .font(.system(size: 11))
-                            .foregroundColor(.gray)
-                        Spacer()
-                        Text(params.formattedShutterSpeed)
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(.white)
-                    }
-                }
-
-                // 显示最后重新测光的数据
-                if lastRawBrightness > 0 {
-                    Divider()
-                        .background(Color.white.opacity(0.1))
-                        .padding(.vertical, 2)
-
-                    HStack {
-                        Text("metering.debug.lastBrightness")
-                            .font(.system(size: 10))
-                            .foregroundColor(Color(hex: "#FF9500"))
-                        Spacer()
-                        Text(String(format: "%.4f", lastRawBrightness))
-                            .font(.system(size: 10, weight: .medium, design: .rounded))
-                            .foregroundColor(Color(hex: "#FF9500"))
-                    }
-
-                    HStack {
-                        Text("metering.debug.location")
-                            .font(.system(size: 10))
-                            .foregroundColor(Color(hex: "#FF9500"))
-                        Spacer()
-                        Text(String(format: "(%.0f, %.0f)", lastMeasurementLocation.x, lastMeasurementLocation.y))
-                            .font(.system(size: 10, weight: .medium, design: .rounded))
-                            .foregroundColor(Color(hex: "#FF9500"))
-                    }
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(white: 0.12))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color(hex: "#FF9500")!.opacity(0.3), lineWidth: 1)
-            )
-        }
-        .padding(.horizontal, 20)
-    }
-
     private var meteringInfo: some View {
         VStack(spacing: 12) {
             // 第一行：Zone, EV, 快门
             HStack(spacing: 16) {
-                infoItem(label: "Zone", value: point.zoneLabel)
+                infoItem(label: "Zone", value: displayedPoint.zoneLabel)
                 Divider()
                     .background(Color.white.opacity(0.1))
-                infoItem(label: "EV", value: String(format: "%.1f", point.ev))
+                infoItem(label: "EV100", value: String(format: "%.1f", displayedPoint.ev))
                 Divider()
                     .background(Color.white.opacity(0.1))
                 // 快门速度（根据当前锁定光圈计算）
@@ -297,7 +208,7 @@ struct PointEditMenuView: View {
                 Image(systemName: "location.fill")
                     .font(.system(size: 10))
                     .foregroundColor(.gray)
-                Text(String(format: String(localized: "metering.positionFormat"), point.x * 100, point.y * 100))
+                Text(String(format: "位置: (%.1f%%, %.1f%%)", displayedPoint.x * 100, displayedPoint.y * 100))
                     .font(.system(size: 12))
                     .foregroundColor(.gray)
             }
@@ -321,12 +232,10 @@ struct PointEditMenuView: View {
 
         if let lockedAperture = viewModel.lockedAperture {
             // 计算该测光点在锁定光圈下的快门速度
-            let shutter = ExposureCalculator.calculateShutterForLockedAperture(
-                aperture: lockedAperture,
-                pointEV: point.ev,
-                iso: viewModel.selectedFilm.iso
-            )
-            shutterText = ExposureCalculator.formatShutterSpeed(shutter)
+            // Use the same compensated recommendation as the exposure bar.
+            shutterText = displayedPoint.exposureParams?.formattedShutterSpeed
+                ?? ExposureCalculator.formatShutterSpeed(ExposureCalculator.calculateShutterForLockedAperture(
+                    aperture: lockedAperture, pointEV: displayedPoint.ev, iso: viewModel.selectedFilm.iso))
             shutterColor = Color(hex: "#34C759")! // 绿色表示锁定模式
         } else {
             // 使用当前曝光计算的快门
@@ -339,7 +248,7 @@ struct PointEditMenuView: View {
                 Image(systemName: viewModel.isApertureLocked ? "lock.fill" : "stopwatch")
                     .font(.system(size: 9))
                     .foregroundColor(viewModel.isApertureLocked ? Color(hex: "#34C759") : .gray)
-                Text(viewModel.isApertureLocked ? String(localized: "exposure.shutterLocked") : String(localized: "exposure.shutter"))
+                Text(viewModel.isApertureLocked ? "快门*" : "快门")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(viewModel.isApertureLocked ? Color(hex: "#34C759") : .gray)
             }

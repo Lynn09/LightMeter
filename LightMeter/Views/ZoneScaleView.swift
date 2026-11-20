@@ -161,25 +161,12 @@ struct ZoneScaleView: View {
 
     /// 测光点标记（随快门偏移移动）
     private func meteringPointMarkers(zoneWidth: CGFloat) -> some View {
-        // 计算有效偏移（拖动中 + 已应用）
-        // 注意：快门提高(+offset) = 画面变暗 = 测光点向低Zone移动
-        let effectiveOffset = -(shutterSpeedOffset + dragOffset)
-
-        let groupedPoints = Dictionary(grouping: meteringPoints) { $0.zone }
-
-        return ForEach(Array(groupedPoints.keys.sorted()), id: \.self) { zone in
-            if let points = groupedPoints[zone] {
-                // 应用快门偏移后的显示位置
-                let adjustedZone = Double(zone) + effectiveOffset
-                let xPosition = CGFloat(adjustedZone) * zoneWidth + zoneWidth / 2
-
-                HStack(spacing: -4) {
-                    ForEach(Array(points.enumerated()), id: \.element.id) { index, point in
-                        meteringPointCircle(point: point, index: index, count: points.count)
-                    }
-                }
-                .position(x: xPosition, y: gradientHeight / 2)
-            }
+        // The view model already includes exposure compensation and shutter offset.
+        // Keep fractional Zone positions; clamp only their on-screen placement.
+        ForEach(Array(meteringPoints.enumerated()), id: \.element.id) { index, point in
+            let zone = min(10, max(0, point.zonePosition ?? Double(point.zone)))
+            meteringPointCircle(point: point, index: index, count: meteringPoints.count)
+                .position(x: CGFloat(zone) * zoneWidth + zoneWidth / 2, y: gradientHeight / 2)
         }
     }
 

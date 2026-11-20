@@ -1,8 +1,6 @@
 import AVFoundation
 import Combine
 import CoreImage
-import CoreGraphics
-import Foundation
 
 // MARK: - Camera Manager
 
@@ -10,14 +8,6 @@ import Foundation
 /// 管理 AVCaptureSession 和处理相机权限，支持实时帧捕获用于测光
 @MainActor
 final class CameraManager: NSObject, ObservableObject {
-
-    enum MeteringSampling {
-        static let minimumMeteringAreaRatio: Double = 0.01
-        static let spotMeteringAreaRatio: Double = 0.02
-        static let subjectMeteringAreaRatio: Double = 0.03
-        static let calibrationMeteringAreaRatio: Double = 0.02
-        static let maximumMeteringAreaRatio: Double = 0.05
-    }
 
     // MARK: - Published Properties
 
@@ -33,71 +23,99 @@ final class CameraManager: NSObject, ObservableObject {
     /// 错误信息
     @Published private(set) var error: CameraError?
 
-    /// 是否已冻结当前帧
-    @Published private(set) var isFrameFrozen: Bool = false
+    @Published private(set) var rangefinder = RangefinderReading()
+    @Published private(set) var rangefinderStatus = "正在连接 LiDAR"
+    @Published private(set) var supportsLiDAR = false
+    @Published private(set) var hasVideoFrames = false
+    @Published private(set) var isPreviewing = false
+    @Published private(set) var previewRevision = 0
+    private var startupRequestedAt: TimeInterval?
+    private var previewRecovery = CameraPreviewRecovery()
+    private var acceptsDepthReadings = false
+    private var depthAcceptAfter: TimeInterval = 0
+    // Capture configuration is owned exclusively by sessionQueue, never the main actor.
+    nonisolated(unsafe) private var depthDataOutput: AVCaptureDepthDataOutput?
+    nonisolated(unsafe) private var depthReceiver: LiDARDepthReceiver?
+    nonisolated(unsafe) private var startupRecovery = CameraStartupRecovery()
 
-    /// 冻结帧预览图
-    @Published private(set) var frozenFrameImage: CGImage?
+    func toggleDistanceLock() {
+        expireDistance()
+        if rangefinder.isLocked {
+            // Only frames captured after unlocking may become the next live reading.
+            depthAcceptAfter = ProcessInfo.processInfo.systemUptime
+        }
+        rangefinder.toggleLock()
+    }
 
-    /// 当前手机镜头焦段信息
-    @Published private(set) var currentLensInfo: CameraLensInfo = .unknown
+    func expireDistance() {
+        rangefinder.expire(at: ProcessInfo.processInfo.systemUptime)
+        guard let startedAt = startupRequestedAt, error == nil else { return }
+        let elapsed = ProcessInfo.processInfo.systemUptime - startedAt
+        switch previewRecovery.check(elapsed: elapsed, hasVideo: hasVideoFrames, isPreviewing: isPreviewing) {
+        case .none: break
+        case .reconnect:
+            previewRevision += 1
+        case .showFailure:
+            error = .configurationFailed(hasVideoFrames
+                ? "已收到相机画面，但预览连接失败，请点击重试。"
+                : "相机启动超时，尚未收到视频画面，请点击重试。")
+        }
+    }
 
-    /// 当前原生 iPhone 镜头信息，用作校准 key
-    @Published private(set) var currentNativeLensInfo: NativeLensInfo?
+    func previewDidChange(_ visible: Bool) {
+        #if DEBUG
+        print("[LightMeter camera] previewing=\(visible)")
+        #endif
+        guard startupRequestedAt != nil else { return }
+        isPreviewing = visible
+    }
 
     // MARK: - Properties
 
     /// 相机会话
-    let session = AVCaptureSession()
+    nonisolated(unsafe) let session = AVCaptureSession()
 
     /// 视频输入设备
-    private var videoDeviceInput: AVCaptureDeviceInput?
+    nonisolated(unsafe) private var videoDeviceInput: AVCaptureDeviceInput?
 
     /// 视频数据输出（用于捕获实时帧进行测光）
-    private var videoDataOutput: AVCaptureVideoDataOutput?
+    nonisolated(unsafe) private var videoDataOutput: AVCaptureVideoDataOutput?
 
     /// 会话队列
-    private let sessionQueue = DispatchQueue(label: "com.lightmeter.session.queue")
+    nonisolated private let sessionQueue = DispatchQueue(label: "com.lightmeter.session.queue")
 
     /// 视频输出队列（用于处理帧数据）
-    private let videoOutputQueue = DispatchQueue(label: "com.lightmeter.video.output", qos: .userInitiated)
+    nonisolated private let videoOutputQueue = DispatchQueue(label: "com.lightmeter.video.output", qos: .userInitiated)
 
     /// 当前最新帧缓存
-    private var currentFrame: CVImageBuffer?
+    // Both video callbacks and main-actor metering access this only under frameLock.
+    nonisolated(unsafe) private var currentFrame: CVImageBuffer?
+    nonisolated(unsafe) private var currentFrameCapturedAt: TimeInterval = 0
+    @Published private(set) var isMetering = false
+    @Published private(set) var meteringMessage: String?
+    private var measurementGeneration = 0
+    private weak var registeredPreviewLayer: AVCaptureVideoPreviewLayer?
 
-    /// 冻结帧缓存
-    private var frozenFrame: CVImageBuffer?
+    func registerPreviewLayer(_ layer: AVCaptureVideoPreviewLayer) { registeredPreviewLayer = layer }
 
-    /// 冻结帧对应的相机曝光参数
-    private var frozenExposureSnapshot: CameraExposureSnapshot?
 
     /// 帧访问锁
-    private let frameLock = NSLock()
-
-    /// 基准 35mm 等效焦段（videoZoomFactor = 1 时）
-    private var baseEquivalentFocalLength: Double?
-
-    /// 当前选择的标准定焦
-    private var selectedFocalLength: StandardFocalLength = .mm35
-
-    /// 亮度历史记录（用于平滑处理）
-    private var brightnessHistory: [Double] = []
-    private let maxHistorySize = 5
-    private let brightnessLock = NSLock()
+    nonisolated private let frameLock = NSLock()
 
     // MARK: - Initialization
 
     override init() {
         super.init()
 
+        if AVCaptureDevice.default(.builtInLiDARDepthCamera, for: .video, position: .back) == nil {
+            rangefinderStatus = "此设备不支持 LiDAR 测距"
+        }
+
         // 检查当前权限状态
         authorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
         hasPermission = authorizationStatus == .authorized
 
-        // 如果已有权限，配置会话
-        if hasPermission {
-            configureSession()
-        }
+        // Configure on explicit permission/start requests, after the view has appeared.
     }
 
     // MARK: - Public Methods
@@ -139,15 +157,38 @@ final class CameraManager: NSObject, ObservableObject {
 
     /// 开始相机会话
     func startSession() {
+        #if DEBUG
+        print("[LightMeter camera] start requested; permission=\(hasPermission)")
+        #endif
         guard hasPermission else {
             error = .permissionDenied
             return
         }
 
+        acceptsDepthReadings = true
+        depthAcceptAfter = ProcessInfo.processInfo.systemUptime
+        error = nil
+        if startupRequestedAt == nil {
+            startupRequestedAt = ProcessInfo.processInfo.systemUptime
+            hasVideoFrames = false
+            isPreviewing = false
+            previewRecovery.reset()
+        }
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
             if !self.session.isRunning {
+                self.frameLock.lock()
+                self.currentFrame = nil
+                self.frameLock.unlock()
+                let token = self.startupRecovery.begin()
+                #if DEBUG
+                print("[LightMeter camera] starting; inputs=\(self.session.inputs.count), outputs=\(self.session.outputs.count)")
+                #endif
                 self.session.startRunning()
+                #if DEBUG
+                print("[LightMeter camera] start returned; running=\(self.session.isRunning)")
+                #endif
+                self.checkStartupFrames(token: token)
                 Task { @MainActor in
                     self.isRunning = self.session.isRunning
                 }
@@ -157,8 +198,20 @@ final class CameraManager: NSObject, ObservableObject {
 
     /// 停止相机会话
     func stopSession() {
+        #if DEBUG
+        print("[LightMeter camera] stop requested")
+        #endif
+        acceptsDepthReadings = false
+        measurementGeneration += 1
+        isMetering = false
+        rangefinder.reset()
+        startupRequestedAt = nil
+        hasVideoFrames = false
+        isPreviewing = false
+        isRunning = false
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
+            self.startupRecovery.stop()
             if self.session.isRunning {
                 self.session.stopRunning()
                 Task { @MainActor in
@@ -175,137 +228,20 @@ final class CameraManager: NSObject, ObservableObject {
         return previewLayer
     }
 
-    /// 截取并冻结当前视频帧
-    /// - Returns: 是否成功冻结
-    @discardableResult
-    func captureStaticFrame() -> Bool {
-        frameLock.lock()
-        guard let frame = currentFrame else {
-            frameLock.unlock()
-            return false
-        }
-        frozenFrame = frame
-        frozenExposureSnapshot = currentExposureSnapshot
-        frameLock.unlock()
-
-        frozenFrameImage = makeCGImage(from: frame)
-        isFrameFrozen = frozenFrameImage != nil
-        return isFrameFrozen
-    }
-
-    /// 恢复实时取景
-    func resumeLivePreview() {
-        frameLock.lock()
-        frozenFrame = nil
-        frozenExposureSnapshot = nil
-        frameLock.unlock()
-
-        frozenFrameImage = nil
-        isFrameFrozen = false
-    }
-
-    /// 选择标准定焦焦段，并通过相机 zoom 驱动系统镜头切换/变焦
-    func selectFocalLength(_ focalLength: StandardFocalLength) {
-        selectedFocalLength = focalLength
-
-        sessionQueue.async { [weak self] in
-            guard let self,
-                  let device = self.videoDeviceInput?.device else {
-                return
-            }
-
-            self.applyZoom(for: focalLength, on: device)
-        }
-    }
-
-    /// 当前相机曝光参数快照，用于从 iPhone 曝光元数据反推 EV100
-    var currentExposureSnapshot: CameraExposureSnapshot? {
-        guard let device = videoDeviceInput?.device else { return nil }
-        let duration = CMTimeGetSeconds(device.exposureDuration)
-        guard duration.isFinite, duration > 0 else { return nil }
-
-        return CameraExposureSnapshot(
-            aperture: Double(device.lensAperture),
-            exposureDuration: duration,
-            iso: Double(device.iso)
-        )
-    }
-
-    /// 当前测光帧对应的场景 EV100。冻结帧使用截取瞬间的曝光参数。
-    var currentMeteringReferenceEV: Double? {
-        let snapshot = frozenExposureSnapshot ?? currentExposureSnapshot
-        guard let snapshot else { return nil }
-        return MeteringCalibrationMath.ev100(
-            aperture: snapshot.aperture,
-            exposureDuration: snapshot.exposureDuration,
-            iso: snapshot.iso
-        )
-    }
-
-    /// 获取中心加权亮度，用于快速/标准校准
-    func getCenterWeightedBrightness() -> Double {
-        getBrightness(
-            at: CGPoint(x: 0.5, y: 0.5),
-            areaRatio: MeteringSampling.calibrationMeteringAreaRatio
-        )
-    }
-
-    /// 锁定当前稳定曝光，避免校准采样期间自动曝光继续漂移
-    @discardableResult
-    func lockCurrentExposure() -> Bool {
-        guard videoDeviceInput?.device != nil else {
-            return false
-        }
-
-        sessionQueue.async { [weak self] in
-            guard let self,
-                  let device = self.videoDeviceInput?.device,
-                  device.isExposureModeSupported(.locked) else {
-                return
-            }
-
-            do {
-                try device.lockForConfiguration()
-                device.exposureMode = .locked
-                device.unlockForConfiguration()
-            } catch {
-                Task { @MainActor in
-                    self.error = .configurationFailed(error.localizedDescription)
-                }
-            }
-        }
-
-        return true
-    }
-
-    /// 捕获一次校准样本：图像测得 EV 与 iPhone 曝光参数推导 EV100 的差异
-    func captureCalibrationSample() -> CalibrationSample? {
-        guard let snapshot = currentExposureSnapshot else { return nil }
-
-        let brightness = getCenterWeightedBrightness()
-        let measuredEV = ExposureCalculator.brightnessToEV(brightness: brightness)
-        let referenceEV = MeteringCalibrationMath.ev100(
-            aperture: snapshot.aperture,
-            exposureDuration: snapshot.exposureDuration,
-            iso: snapshot.iso
-        )
-
-        return CalibrationSample(
-            measuredEV: measuredEV,
-            referenceEV: referenceEV,
-            brightness: brightness
-        )
-    }
-
     // MARK: - Private Methods
 
     /// 配置相机会话
     private func configureSession() {
         sessionQueue.async { [weak self] in
             guard let self = self else { return }
+            // Permission checks and foreground transitions may configure more than once.
+            guard self.videoDeviceInput == nil else { return }
 
             self.session.beginConfiguration()
             defer { self.session.commitConfiguration() }
+            #if DEBUG
+            print("[LightMeter camera] configuring")
+            #endif
 
             // 设置会话质量
             self.session.sessionPreset = .high
@@ -314,21 +250,103 @@ final class CameraManager: NSObject, ObservableObject {
             do {
                 try self.addVideoInput()
                 try self.addVideoDataOutput()
+                self.addDepthDataOutputIfSupported()
+                #if DEBUG
+                print("[LightMeter camera] configured device=\(self.videoDeviceInput?.device.deviceType.rawValue ?? "none")")
+                #endif
             } catch {
+                // Permit a later permission/foreground retry after partial configuration.
+                self.session.inputs.forEach { self.session.removeInput($0) }
+                self.session.outputs.forEach { self.session.removeOutput($0) }
+                self.videoDeviceInput = nil
+                self.videoDataOutput = nil
+                // A depth configuration failure must not disable the regular camera.
+                do {
+                    try self.addVideoInput(allowLiDAR: false)
+                    try self.addVideoDataOutput()
+                    Task { @MainActor in
+                        self.supportsLiDAR = false
+                        self.acceptsDepthReadings = false
+                        self.rangefinderStatus = "LiDAR 暂不可用，已恢复普通相机"
+                    }
+                    return
+                } catch {
+                    self.session.inputs.forEach { self.session.removeInput($0) }
+                    self.session.outputs.forEach { self.session.removeOutput($0) }
+                    self.videoDeviceInput = nil
+                    self.videoDataOutput = nil
+                }
                 Task { @MainActor in
                     self.error = .configurationFailed(error.localizedDescription)
+                    self.rangefinder.reset()
+                    if self.rangefinderStatus != "此设备不支持 LiDAR 测距" {
+                        self.rangefinderStatus = "LiDAR 测距暂不可用"
+                    }
+                }
+            }
+        }
+    }
+
+    nonisolated private func checkStartupFrames(token: Int) {
+        sessionQueue.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self else { return }
+            self.frameLock.lock()
+            let receivedFrame = self.currentFrame != nil
+            self.frameLock.unlock()
+            let action = self.startupRecovery.timeout(
+                token: token, receivedFrame: receivedFrame,
+                usingLiDAR: self.videoDeviceInput?.device.deviceType == .builtInLiDARDepthCamera
+            )
+            switch action {
+            case .none: break
+            case .retryWithoutDepth:
+                self.session.stopRunning()
+                self.session.beginConfiguration()
+                self.session.outputs.forEach { self.session.removeOutput($0) }
+                self.session.inputs.forEach { self.session.removeInput($0) }
+                self.videoDeviceInput = nil
+                self.videoDataOutput = nil
+                self.depthDataOutput = nil
+                self.depthReceiver = nil
+                self.frameLock.lock()
+                self.currentFrame = nil
+                self.frameLock.unlock()
+                do {
+                    try self.addVideoInput(allowLiDAR: false)
+                    try self.addVideoDataOutput()
+                    self.session.commitConfiguration()
+                    self.session.startRunning()
+                    Task { @MainActor in
+                        self.supportsLiDAR = false
+                        self.acceptsDepthReadings = false
+                        self.rangefinder.reset()
+                        self.rangefinderStatus = "LiDAR 暂不可用，已恢复普通相机"
+                    }
+                    self.checkStartupFrames(token: token)
+                } catch {
+                    self.session.inputs.forEach { self.session.removeInput($0) }
+                    self.session.outputs.forEach { self.session.removeOutput($0) }
+                    self.videoDeviceInput = nil
+                    self.videoDataOutput = nil
+                    self.session.commitConfiguration()
+                    Task { @MainActor in self.error = .configurationFailed(error.localizedDescription) }
+                }
+            case .showFailure:
+                Task { @MainActor in
+                    self.rangefinder.reset()
+                    self.error = .configurationFailed("相机未输出画面，请关闭占用相机的应用后重试。")
                 }
             }
         }
     }
 
     /// 添加视频数据输出（用于实时帧捕获）
-    private func addVideoDataOutput() throws {
+    nonisolated private func addVideoDataOutput() throws {
         let videoDataOutput = AVCaptureVideoDataOutput()
 
-        // Prefer YUV luma data so metering reads the camera signal before RGB display conversion.
+        // 设置像素格式为32位BGRA，便于处理
         videoDataOutput.videoSettings = [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
         ]
 
         // 设置输出代理
@@ -344,231 +362,171 @@ final class CameraManager: NSObject, ObservableObject {
 
     // MARK: - Public Metering Methods
 
-    /// 获取指定位置的亮度值（带平滑处理）
-    /// - Parameters:
-    ///   - point: 点击位置（归一化坐标 0...1）
-    ///   - areaRatio: 测光区域面积比例，点测光默认 2%，并限制在 1%...5%
-    /// - Returns: 归一化亮度值 [0.0, 1.0]
-    func getBrightness(at point: CGPoint, areaRatio: Double = MeteringSampling.spotMeteringAreaRatio) -> Double {
-        guard let frame = activeMeteringFrame() else {
-            // 无可用帧时返回历史平均值或默认值
-            return getSmoothedBrightness(fallback: 0.18)
+    /// Optional output: failure must leave ordinary camera metering available.
+    nonisolated private func addDepthDataOutputIfSupported() {
+        guard videoDeviceInput?.device.deviceType == .builtInLiDARDepthCamera,
+              videoDeviceInput?.device.activeDepthDataFormat != nil else {
+            Task { @MainActor in self.rangefinderStatus = "此设备不支持 LiDAR 测距" }
+            return
         }
-
-        let samplingPoint = normalizedSamplingPoint(forDisplayPoint: point)
-        let rawBrightness = extractBrightness(from: frame, atNormalizedPoint: samplingPoint, areaRatio: areaRatio)
-
-        // 应用平滑处理
-        let smoothedBrightness = addBrightnessToHistoryAndSmooth(rawBrightness)
-
-        return smoothedBrightness
+        let output = AVCaptureDepthDataOutput()
+        guard session.canAddOutput(output) else {
+            Task { @MainActor in self.rangefinderStatus = "LiDAR 测距暂不可用" }
+            return
+        }
+        // Avoid filling holes with inferred depth at subject boundaries.
+        output.isFilteringEnabled = false
+        output.alwaysDiscardsLateDepthData = true
+        let receiver = LiDARDepthReceiver { [weak self] distance, capturedAt in
+            Task { @MainActor [weak self] in
+                guard let self, self.acceptsDepthReadings,
+                      capturedAt >= self.depthAcceptAfter,
+                      ProcessInfo.processInfo.systemUptime - capturedAt < 0.5 else { return }
+                self.rangefinder.update(distance, at: capturedAt)
+            }
+        }
+        output.setDelegate(receiver, callbackQueue: videoOutputQueue)
+        session.addOutput(output)
+        depthReceiver = receiver
+        depthDataOutput = output
+        Task { @MainActor in
+            self.supportsLiDAR = true
+            self.rangefinderStatus = "对准主体测距"
+        }
     }
 
-    /// 对冻结帧或当前帧中的主体进行自动测光
-    func getSubjectMeteringResult() -> SubjectMeteringResult? {
-        guard let frame = activeMeteringFrame() else {
+    /// Uses the preview layer's transform, including portrait rotation and aspect-fill crop.
+    func meter(at normalizedPreviewPoint: CGPoint) async -> CameraMeteringReading? {
+        guard !isMetering else { return nil }
+        guard isRunning, hasVideoFrames, let layer = registeredPreviewLayer,
+              layer.bounds.width > 0, layer.bounds.height > 0 else {
+            meteringMessage = "相机尚未就绪，请稍后再测光。"
             return nil
         }
-
-        return SubjectMeteringAnalyzer.analyze(gridSize: 9) { point in
-            let samplingPoint = normalizedSamplingPoint(forDisplayPoint: point)
-            return extractBrightness(
-                from: frame,
-                atNormalizedPoint: samplingPoint,
-                areaRatio: MeteringSampling.subjectMeteringAreaRatio
-            )
+        let layerPoint = CGPoint(x: normalizedPreviewPoint.x * layer.bounds.width,
+                                 y: normalizedPreviewPoint.y * layer.bounds.height)
+        let devicePoint = layer.captureDevicePointConverted(fromLayerPoint: layerPoint)
+        isMetering = true
+        meteringMessage = nil
+        let generation = measurementGeneration
+        defer { if measurementGeneration == generation { isMetering = false } }
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                sessionQueue.async { [weak self] in
+                    guard let self, let device = self.videoDeviceInput?.device, self.session.isRunning else {
+                        continuation.resume(throwing: CameraError.deviceNotFound)
+                        return
+                    }
+                    do {
+                        guard device.isExposurePointOfInterestSupported,
+                              device.isExposureModeSupported(.continuousAutoExposure) else {
+                            throw CameraError.configurationFailed("此相机不支持位置测光。")
+                        }
+                        try device.lockForConfiguration()
+                        device.exposurePointOfInterest = devicePoint
+                        device.setExposureTargetBias(0, completionHandler: nil)
+                        device.exposureMode = .continuousAutoExposure
+                        device.unlockForConfiguration()
+                        continuation.resume()
+                    } catch { continuation.resume(throwing: error) }
+                }
+            }
+            // The device may briefly report its previous stable state after changing the ROI.
+            try await Task.sleep(nanoseconds: 300_000_000)
+            var convergence = ExposureConvergence()
+            for _ in 0..<30 {
+                try Task.checkCancellation()
+                guard generation == measurementGeneration else { return nil }
+                let snapshot = await exposureSnapshot()
+                guard generation == measurementGeneration, !Task.isCancelled, isRunning else { return nil }
+                if let snapshot, let raw = convergence.append(snapshot) {
+                    let offset = UserDefaults.standard.double(forKey: "metering.calibration.\(snapshot.cameraID)")
+                    let calibrated = raw + (offset.isFinite && abs(offset) <= 5 ? offset : 0)
+                    #if DEBUG
+                    print("[LightMeter metering] stable EV100=\(calibrated), spread=\(convergence.spread)")
+                    #endif
+                    return CameraMeteringReading(rawEV100: raw, ev100: calibrated,
+                        cameraID: snapshot.cameraID, spreadEV: convergence.spread)
+                }
+                try await Task.sleep(nanoseconds: 80_000_000)
+            }
+            meteringMessage = "光线尚未稳定或超出相机测光范围，请对准主体后重试。"
+        } catch is CancellationError {
+            return nil
+        } catch {
+            if generation == measurementGeneration { meteringMessage = error.localizedDescription }
         }
+        return nil
     }
 
-    // MARK: - Private Helper Methods
-
-    /// 当前用于测光的帧。冻结后优先使用冻结帧。
-    private func activeMeteringFrame() -> CVImageBuffer? {
-        frameLock.lock()
-        defer { frameLock.unlock() }
-
-        return frozenFrame ?? currentFrame
-    }
-
-    /// 将预览显示坐标转换为当前测光帧的原始采样坐标
-    private func normalizedSamplingPoint(forDisplayPoint point: CGPoint) -> CGPoint {
-        frameLock.lock()
-        let isUsingFrozenFrame = frozenFrame != nil
-        frameLock.unlock()
-
-        guard isUsingFrozenFrame else {
-            return point
-        }
-
-        return StaticFramePreviewGeometry.rawPoint(
-            forDisplayPoint: point,
-            orientation: .portrait
-        )
-    }
-
-    /// 从视频帧生成静态预览图
-    private func makeCGImage(from frame: CVImageBuffer) -> CGImage? {
-        let orientation = StaticFramePreviewGeometry.exifOrientation(for: .portrait)
-        let ciImage = CIImage(cvImageBuffer: frame).oriented(orientation)
-        let context = CIContext(options: nil)
-        return context.createCGImage(ciImage, from: ciImage.extent)
-    }
-
-    /// 将亮度值添加到历史记录并返回平滑后的值
-    /// 使用简单移动平均（SMA）进行平滑
-    private func addBrightnessToHistoryAndSmooth(_ brightness: Double) -> Double {
-        brightnessLock.lock()
-        defer { brightnessLock.unlock() }
-
-        // 添加新值到历史记录
-        brightnessHistory.append(brightness)
-
-        // 限制历史记录大小
-        if brightnessHistory.count > maxHistorySize {
-            brightnessHistory.removeFirst()
-        }
-
-        // 计算移动平均值
-        let average = brightnessHistory.reduce(0, +) / Double(brightnessHistory.count)
-
-        return average
-    }
-
-    /// 获取平滑后的亮度值
-    /// - Parameter fallback: 无历史记录时的回退值
-    /// - Returns: 平滑后的亮度值或回退值
-    private func getSmoothedBrightness(fallback: Double) -> Double {
-        brightnessLock.lock()
-        defer { brightnessLock.unlock() }
-
-        guard !brightnessHistory.isEmpty else {
-            return fallback
-        }
-
-        return brightnessHistory.reduce(0, +) / Double(brightnessHistory.count)
-    }
-
-    // MARK: - Private Helper Methods
-
-    /// 从图像帧中提取指定区域的平均亮度，优先使用 YUV luma plane，BGRA 仅作兼容 fallback。
-    private func extractBrightness(from frame: CVImageBuffer, atNormalizedPoint point: CGPoint, areaRatio: Double) -> Double {
-        CVPixelBufferLockBaseAddress(frame, .readOnly)
-        defer { CVPixelBufferUnlockBaseAddress(frame, .readOnly) }
-
-        if CVPixelBufferIsPlanar(frame),
-           CVPixelBufferGetPlaneCount(frame) > 0,
-           let luma = extractLumaBrightness(from: frame, atNormalizedPoint: point, areaRatio: areaRatio) {
-            return luma
-        }
-
-        return extractBGRABrightness(from: frame, atNormalizedPoint: point, areaRatio: areaRatio)
-    }
-
-    private func meteringSideLength(for frame: CVImageBuffer, areaRatio: Double) -> Int {
-        let width = CVPixelBufferGetWidth(frame)
-        let height = CVPixelBufferGetHeight(frame)
-        let ratio = max(
-            MeteringSampling.minimumMeteringAreaRatio,
-            min(MeteringSampling.maximumMeteringAreaRatio, areaRatio)
-        )
-        return max(1, Int(round(sqrt(Double(width * height) * ratio))))
-    }
-
-    private func extractLumaBrightness(from frame: CVImageBuffer, atNormalizedPoint point: CGPoint, areaRatio: Double) -> Double? {
-        let width = CVPixelBufferGetWidthOfPlane(frame, 0)
-        let height = CVPixelBufferGetHeightOfPlane(frame, 0)
-        let regionSize = meteringSideLength(for: frame, areaRatio: areaRatio)
-
-        let halfSize = regionSize / 2
-        let normalizedX = max(0, min(1, point.x))
-        let normalizedY = max(0, min(1, point.y))
-        let x = max(halfSize, min(Int(normalizedX * CGFloat(width)), width - halfSize))
-        let y = max(halfSize, min(Int(normalizedY * CGFloat(height)), height - halfSize))
-
-        guard let baseAddress = CVPixelBufferGetBaseAddressOfPlane(frame, 0) else { return nil }
-
-        let bytesPerRow = CVPixelBufferGetBytesPerRowOfPlane(frame, 0)
-        let buffer = baseAddress.assumingMemoryBound(to: UInt8.self)
-
-        var totalBrightness: Double = 0
-        var pixelCount = 0
-
-        for dy in -halfSize..<halfSize {
-            for dx in -halfSize..<halfSize {
-                let px = x + dx
-                let py = y + dy
-                let offset = py * bytesPerRow + px
-                totalBrightness += Double(buffer[offset]) / 255.0
-                pixelCount += 1
+    private func exposureSnapshot() async -> CameraExposureSnapshot? {
+        await withCheckedContinuation { continuation in
+            sessionQueue.async { [weak self] in
+                guard let self, let device = self.videoDeviceInput?.device, self.session.isRunning else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                self.frameLock.lock()
+                let fresh = self.currentFrame != nil && ProcessInfo.processInfo.systemUptime - self.currentFrameCapturedAt < 0.3
+                self.frameLock.unlock()
+                continuation.resume(returning: CameraExposureSnapshot(aperture: Double(device.lensAperture),
+                    duration: CMTimeGetSeconds(device.exposureDuration), iso: Double(device.iso),
+                    targetOffset: Double(device.exposureTargetOffset), targetBias: Double(device.exposureTargetBias),
+                    isAdjusting: device.isAdjustingExposure, hasFreshFrame: fresh, cameraID: device.uniqueID))
             }
         }
-
-        guard pixelCount > 0 else { return nil }
-        return totalBrightness / Double(pixelCount)
     }
 
-    private func extractBGRABrightness(from frame: CVImageBuffer, atNormalizedPoint point: CGPoint, areaRatio: Double) -> Double {
-        let width = CVPixelBufferGetWidth(frame)
-        let height = CVPixelBufferGetHeight(frame)
-        let regionSize = meteringSideLength(for: frame, areaRatio: areaRatio)
-
-        // 计算测光区域边界
-        let halfSize = regionSize / 2
-        let normalizedX = max(0, min(1, point.x))
-        let normalizedY = max(0, min(1, point.y))
-        let x = max(halfSize, min(Int(normalizedX * CGFloat(width)), width - halfSize))
-        let y = max(halfSize, min(Int(normalizedY * CGFloat(height)), height - halfSize))
-
-        guard let baseAddress = CVPixelBufferGetBaseAddress(frame) else {
-            return 0.18 // 默认中灰
-        }
-
-        let bytesPerRow = CVPixelBufferGetBytesPerRow(frame)
-        let buffer = baseAddress.assumingMemoryBound(to: UInt8.self)
-
-        var totalBrightness: Double = 0
-        var pixelCount = 0
-
-        // 遍历测光区域内的所有像素，计算平均亮度
-        for dy in -halfSize..<halfSize {
-            for dx in -halfSize..<halfSize {
-                let px = x + dx
-                let py = y + dy
-
-                // 计算该像素在缓冲区中的偏移
-                let offset = py * bytesPerRow + px * 4 // BGRA格式，每像素4字节
-
-                // 读取BGRA值
-                let b = Double(buffer[offset])
-                let g = Double(buffer[offset + 1])
-                let r = Double(buffer[offset + 2])
-                // a = buffer[offset + 3] (Alpha通道，忽略)
-
-                // 使用ITU-R BT.709标准转换RGB到亮度
-                // Y = 0.2126*R + 0.7152*G + 0.0722*B
-                let luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0
-
-                totalBrightness += luminance
-                pixelCount += 1
-            }
-        }
-
-        guard pixelCount > 0 else {
-            return 0.18
-        }
-
-        return totalBrightness / Double(pixelCount)
+    /// Calibration is per capture device, and separate from artistic exposure compensation.
+    func calibrate(rawEV100: Double, referenceEV100: Double, cameraID: String) -> Double? {
+        guard let offset = ExposureCalculator.calibrationOffset(rawEV100: rawEV100, referenceEV100: referenceEV100) else { return nil }
+        UserDefaults.standard.set(offset, forKey: "metering.calibration.\(cameraID)")
+        return offset
     }
 
     /// 添加视频输入
-    private func addVideoInput() throws {
+    nonisolated private func addVideoInput(allowLiDAR: Bool = true) throws {
         // 获取后置摄像头
-        guard let videoDevice = preferredBackCamera() else {
+        let lidar = allowLiDAR ? AVCaptureDevice.default(.builtInLiDARDepthCamera, for: .video, position: .back) : nil
+        let depthVideoFormat = lidar?.formats.last {
+            let dimensions = CMVideoFormatDescriptionGetDimensions($0.formatDescription)
+            return dimensions.width <= 1920 && !($0.supportedDepthDataFormats.isEmpty)
+                && !$0.isVideoBinned
+                && $0.videoSupportedFrameRateRanges.contains { $0.minFrameRate <= 30 && $0.maxFrameRate >= 30 }
+                && $0.supportedDepthDataFormats.contains {
+                    CMFormatDescriptionGetMediaSubType($0.formatDescription) == kCVPixelFormatType_DepthFloat16
+                        && $0.videoSupportedFrameRateRanges.contains { $0.minFrameRate <= 30 && $0.maxFrameRate >= 30 }
+                }
+                && CMFormatDescriptionGetMediaSubType($0.formatDescription) == kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
+        }
+        guard let videoDevice = (depthVideoFormat == nil ? nil : lidar)
+                ?? AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
             throw CameraError.deviceNotFound
         }
 
+        // Attach the input BEFORE setting formats: adding an input can select a new format.
+        let videoInput = try AVCaptureDeviceInput(device: videoDevice)
+        guard session.canAddInput(videoInput) else { throw CameraError.cannotAddInput }
+        session.addInput(videoInput)
+        videoDeviceInput = videoInput
+        session.sessionPreset = .high
+
         // 配置设备以获得更好曝光控制
         try videoDevice.lockForConfiguration()
+        defer { videoDevice.unlockForConfiguration() }
+
+        if videoDevice.deviceType == .builtInLiDARDepthCamera, let format = depthVideoFormat {
+            // Setting activeFormat on the attached device selects inputPriority automatically.
+            // Do not mutate the session preset while holding the device configuration lock.
+            videoDevice.activeFormat = format
+            videoDevice.activeDepthDataFormat = format.supportedDepthDataFormats.last {
+                CMFormatDescriptionGetMediaSubType($0.formatDescription) == kCVPixelFormatType_DepthFloat16
+                    && $0.videoSupportedFrameRateRanges.contains { $0.minFrameRate <= 30 && $0.maxFrameRate >= 30 }
+            }
+            videoDevice.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 30)
+            videoDevice.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: 30)
+            videoDevice.videoZoomFactor = 1
+        }
 
         // 设置曝光模式为自动（支持连续自动曝光）
         if videoDevice.isExposureModeSupported(.continuousAutoExposure) {
@@ -585,144 +543,6 @@ final class CameraManager: NSObject, ObservableObject {
             videoDevice.whiteBalanceMode = .continuousAutoWhiteBalance
         }
 
-        videoDevice.unlockForConfiguration()
-
-        // 创建设备输入
-        let videoInput = try AVCaptureDeviceInput(device: videoDevice)
-
-        guard self.session.canAddInput(videoInput) else {
-            throw CameraError.cannotAddInput
-        }
-
-        self.session.addInput(videoInput)
-        self.videoDeviceInput = videoInput
-        self.updateNativeLensInfo(for: videoDevice)
-        self.updateLensInfo(for: videoDevice)
-        self.applyZoom(for: selectedFocalLength, on: videoDevice)
-    }
-
-    /// 更新当前原生镜头标识。模拟焦段不改变这个校准 key。
-    private func updateNativeLensInfo(for device: AVCaptureDevice) {
-        let key = [
-            device.position == .back ? "back" : "front",
-            device.deviceType.rawValue,
-            device.uniqueID
-        ].joined(separator: "|")
-
-        let info = NativeLensInfo(
-            key: key,
-            name: nativeLensDisplayName(for: device),
-            deviceType: device.deviceType.rawValue
-        )
-
-        Task { @MainActor in
-            self.currentNativeLensInfo = info
-        }
-    }
-
-    private func nativeLensDisplayName(for device: AVCaptureDevice) -> String {
-        switch device.deviceType {
-        case .builtInTripleCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera:
-            return String(localized: "camera.native.main")
-        case .builtInUltraWideCamera:
-            return String(localized: "camera.native.ultraWide")
-        case .builtInTelephotoCamera:
-            return String(localized: "camera.native.telephoto")
-        default:
-            return device.localizedName
-        }
-    }
-
-    /// 更新当前镜头焦段信息
-    private func updateLensInfo(for device: AVCaptureDevice) {
-        let fieldOfView = Double(device.activeFormat.videoFieldOfView)
-
-        if baseEquivalentFocalLength == nil, fieldOfView > 0 {
-            let radians = fieldOfView * .pi / 180.0
-            baseEquivalentFocalLength = 36.0 / (2.0 * tan(radians / 2.0))
-        }
-
-        let base = baseEquivalentFocalLength ?? fallbackEquivalentFocalLength(for: device.deviceType)
-        let equivalentFocalLength = base.map { $0 * Double(device.videoZoomFactor) }
-        let displayName = CameraLensInfo.makeDisplayName(equivalentFocalLength: equivalentFocalLength)
-        let zoomFactor = Double(device.videoZoomFactor)
-        let renderingMode = lensRenderingMode(for: device, zoomFactor: device.videoZoomFactor)
-
-        Task { @MainActor in
-            self.currentLensInfo = CameraLensInfo(
-                equivalentFocalLength: equivalentFocalLength,
-                baseEquivalentFocalLength: base,
-                zoomFactor: zoomFactor,
-                displayName: displayName,
-                renderingMode: renderingMode
-            )
-        }
-    }
-
-    /// 优先使用系统虚拟多摄设备，让 iOS 管理物理镜头切换
-    private func preferredBackCamera() -> AVCaptureDevice? {
-        let preferredTypes: [AVCaptureDevice.DeviceType] = [
-            .builtInTripleCamera,
-            .builtInDualWideCamera,
-            .builtInDualCamera,
-            .builtInWideAngleCamera
-        ]
-
-        for deviceType in preferredTypes {
-            if let device = AVCaptureDevice.default(deviceType, for: .video, position: .back) {
-                return device
-            }
-        }
-
-        return AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
-    }
-
-    /// 应用标准焦段对应的 zoom factor
-    private func applyZoom(for focalLength: StandardFocalLength, on device: AVCaptureDevice) {
-        let base = baseEquivalentFocalLength ?? fallbackEquivalentFocalLength(for: device.deviceType)
-        let desiredZoom = FocalLengthPreviewGeometry.zoomFactor(
-            baseEquivalentFocalLength: base,
-            selectedFocalLength: focalLength
-        )
-        let clampedZoom = FocalLengthPreviewGeometry.clampedZoomFactor(
-            desiredZoom,
-            minimum: device.minAvailableVideoZoomFactor,
-            maximum: device.maxAvailableVideoZoomFactor
-        )
-
-        do {
-            try device.lockForConfiguration()
-            device.videoZoomFactor = clampedZoom
-            device.unlockForConfiguration()
-            updateLensInfo(for: device)
-        } catch {
-            Task { @MainActor in
-                self.error = .configurationFailed(error.localizedDescription)
-            }
-        }
-    }
-
-    /// 当前焦段渲染方式说明
-    private func lensRenderingMode(for device: AVCaptureDevice, zoomFactor: CGFloat) -> String {
-        guard !device.virtualDeviceSwitchOverVideoZoomFactors.isEmpty else {
-            return String(localized: "camera.lens.system")
-        }
-
-        return String(localized: "camera.lens.system")
-    }
-
-    /// 根据设备类型提供焦段降级估算
-    private func fallbackEquivalentFocalLength(for deviceType: AVCaptureDevice.DeviceType) -> Double? {
-        switch deviceType {
-        case .builtInUltraWideCamera:
-            return 13
-        case .builtInWideAngleCamera:
-            return 24
-        case .builtInTelephotoCamera:
-            return 77
-        default:
-            return nil
-        }
     }
 }
 
@@ -730,7 +550,7 @@ final class CameraManager: NSObject, ObservableObject {
 
 extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
 
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+    nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         // 从 sample buffer 中提取图像缓冲区
         guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             return
@@ -738,8 +558,19 @@ extension CameraManager: AVCaptureVideoDataOutputSampleBufferDelegate {
 
         // 更新当前帧（线程安全）
         frameLock.lock()
+        let isFirstFrame = currentFrame == nil
         currentFrame = imageBuffer
+        currentFrameCapturedAt = ProcessInfo.processInfo.systemUptime
         frameLock.unlock()
+        if isFirstFrame {
+            #if DEBUG
+            print("[LightMeter camera] first video frame")
+            #endif
+            Task { @MainActor [weak self] in
+                guard let self, self.startupRequestedAt != nil else { return }
+                self.hasVideoFrames = true
+            }
+        }
     }
 }
 
@@ -755,15 +586,15 @@ enum CameraError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .permissionDenied:
-            return String(localized: "camera.error.permissionDenied")
+            return "相机权限被拒绝。请在设置中允许访问相机。"
         case .deviceNotFound:
-            return String(localized: "camera.error.deviceNotFound")
+            return "无法找到相机设备。"
         case .cannotAddInput:
-            return String(localized: "camera.error.cannotAddInput")
+            return "无法添加相机输入。"
         case .cannotAddOutput:
-            return String(localized: "camera.error.cannotAddOutput")
+            return "无法添加视频输出。"
         case .configurationFailed(let message):
-            return String(format: String(localized: "camera.error.configurationFailed"), message)
+            return "相机配置失败: \(message)"
         }
     }
 }

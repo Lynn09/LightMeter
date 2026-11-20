@@ -37,6 +37,9 @@ struct MeteringPoint: Identifiable, Equatable, Hashable {
     var zone: Int
     var ev: Double
     var isSelected: Bool
+    var zonePosition: Double?
+    var rawEV100: Double?
+    var cameraID: String?
 
     // 新增：存储该点独立的曝光参数（光圈锁定模式下）
     var exposureParams: ExposureParams?
@@ -89,16 +92,10 @@ struct MeteringPoint: Identifiable, Equatable, Hashable {
 
     /// 测光点曝光值标识
     var exposureValueLabel: String {
-        String(format: "EV %.1f", ev)
+        String(format: "EV100 %.1f", ev)
     }
 
-    /// 从 EV 值反推原始亮度值（用于调试）
-    /// 这是 brightnessToEV 的逆运算: brightness = 0.18 * 2^(ev - referenceEV)
-    func evToBrightness() -> Double {
-        let referenceEV = ExposureCalculator.referenceEV
-        let brightness = 0.18 * pow(2.0, ev - referenceEV)
-        return min(1.0, max(0.0, brightness))
-    }
+
 }
 
 // MARK: - Zone System Constants

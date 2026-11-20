@@ -18,32 +18,29 @@ struct MeteringPointView: View {
 
             // 选中时的发光效果
             if isSelected {
-                RoundedRectangle(cornerRadius: MeteringPointLayout.selectedGlowCornerRadius)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(point.swiftColor.opacity(0.3))
-                    .frame(
-                        width: MeteringPointLayout.selectedGlowSize,
-                        height: MeteringPointLayout.selectedGlowSize
-                    )
-                    .blur(radius: 5)
+                    .frame(width: 50, height: 50)
+                    .blur(radius: 10)
             }
 
             // 主方框
-            RoundedRectangle(cornerRadius: MeteringPointLayout.markerCornerRadius)
+            RoundedRectangle(cornerRadius: 6)
                 .fill(point.swiftColor.opacity(0.2))
-                .frame(
-                    width: MeteringPointLayout.markerSize,
-                    height: MeteringPointLayout.markerSize
-                )
+                .frame(width: 40, height: 40)
                 .overlay(
-                    RoundedRectangle(cornerRadius: MeteringPointLayout.markerCornerRadius)
-                        .stroke(point.swiftColor, lineWidth: isSelected ? 2 : 1)
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(point.swiftColor, lineWidth: isSelected ? 3 : 2)
                 )
+
+            // 十字准星
+            MeteringPointPlusShape()
+                .stroke(point.swiftColor, lineWidth: 1.5)
+                .frame(width: 24, height: 24)
         }
         .position(
-            MeteringPointLayout.displayPosition(
-                normalizedPoint: CGPoint(x: point.x, y: point.y),
-                containerSize: containerSize
-            )
+            x: point.x * containerSize.width,
+            y: point.y * containerSize.height
         )
         .onTapGesture {
             onTap()
@@ -70,10 +67,31 @@ struct MeteringPointView: View {
     }
 
     private var exposureValueBadgeYOffset: CGFloat {
-        MeteringPointLayout.exposureValueBadgeYOffset(
-            normalizedY: point.y,
-            containerHeight: containerSize.height
-        )
+        let pointY = point.y * containerSize.height
+        let topBadgeClearance: CGFloat = 46
+
+        return pointY < topBadgeClearance ? 34 : -34
+    }
+}
+
+// MARK: - Plus Shape
+
+/// 十字形状
+private struct MeteringPointPlusShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let halfSize = min(rect.width, rect.height) / 2
+
+        // 水平线
+        path.move(to: CGPoint(x: center.x - halfSize, y: center.y))
+        path.addLine(to: CGPoint(x: center.x + halfSize, y: center.y))
+
+        // 垂直线
+        path.move(to: CGPoint(x: center.x, y: center.y - halfSize))
+        path.addLine(to: CGPoint(x: center.x, y: center.y + halfSize))
+
+        return path
     }
 }
 

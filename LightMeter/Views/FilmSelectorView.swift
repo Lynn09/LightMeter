@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// 胶片选择抽屉视图
-/// 顶部下拉样式，显示可用的胶片预设列表
+/// 胶片选择弹窗视图
+/// 底部弹窗样式，显示可用的胶片预设列表
 struct FilmSelectorView: View {
 
     // MARK: - Properties
@@ -18,9 +18,10 @@ struct FilmSelectorView: View {
     // MARK: - Constants
 
     private enum Constants {
-        static let popoverMaxHeight: CGFloat = 420
-        static let cornerRadius: CGFloat = 18
+        static let sheetHeight: CGFloat = 400
+        static let cornerRadius: CGFloat = 20
         static let headerHeight: CGFloat = 60
+        static let optionHeight: CGFloat = 100
         static let horizontalPadding: CGFloat = 20
         static let optionSpacing: CGFloat = 12
     }
@@ -44,14 +45,9 @@ struct FilmSelectorView: View {
             // 胶片选项列表
             filmOptionsList
         }
-        .frame(maxHeight: Constants.popoverMaxHeight)
+        .frame(height: Constants.sheetHeight)
         .background(Colors.background)
-        .clipShape(RoundedRectangle(cornerRadius: Constants.cornerRadius, style: .continuous))
-        .shadow(color: Color.black.opacity(0.32), radius: 18, x: 0, y: 12)
-        .overlay(alignment: .top) {
-            filmAnchorTriangle
-                .offset(y: -7)
-        }
+        .cornerRadius(Constants.cornerRadius, corners: [.topLeft, .topRight])
     }
 
     // MARK: - Subviews
@@ -60,7 +56,7 @@ struct FilmSelectorView: View {
     private var header: some View {
         HStack {
             // 标题
-            Text("film.selector.title")
+            Text("选择胶片")
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundColor(Colors.textPrimary)
 
@@ -79,12 +75,6 @@ struct FilmSelectorView: View {
         }
         .frame(height: Constants.headerHeight)
         .padding(.horizontal, Constants.horizontalPadding)
-    }
-
-    private var filmAnchorTriangle: some View {
-        Triangle()
-            .fill(Colors.background)
-            .frame(width: 14, height: 7)
     }
 
     /// 胶片选项列表
@@ -121,17 +111,13 @@ private struct FilmOptionRow: View {
     let isSelected: Bool
     let onSelect: () -> Void
 
-    private let packagingSize: CGFloat = 72
-    private let checkColumnWidth: CGFloat = 28
-
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 16) {
-                FilmPackagingImageView(film: film)
-                    .frame(
-                        width: packagingSize,
-                        height: packagingSize
-                    )
+                // 颜色圆点
+                Circle()
+                    .fill(film.swiftColor)
+                    .frame(width: 16, height: 16)
 
                 // 胶片信息
                 VStack(alignment: .leading, spacing: 4) {
@@ -139,28 +125,19 @@ private struct FilmOptionRow: View {
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(.white)
 
-                    Text("\(film.zoneRange) · \(film.localizedDescription)")
+                    Text("\(film.zoneRange) · \(film.description)")
                         .font(.system(size: 13))
                         .foregroundColor(Color(hex: "#8E8E93")!)
+                }
 
-                    Text("ISO \(film.iso)")
-                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                Spacer()
+
+                // 选中图标
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 24))
                         .foregroundColor(film.swiftColor)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .layoutPriority(1)
-
-                ZStack {
-                    if isSelected {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(film.swiftColor)
-                            .accessibilityLabel(Text("film.selected.accessibility"))
-                    } else {
-                        Color.clear
-                    }
-                }
-                .frame(width: checkColumnWidth)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 16)
@@ -179,65 +156,25 @@ private struct FilmOptionRow: View {
     }
 }
 
-// MARK: - Film Packaging Image View
+// MARK: - Corner Radius Extension
 
-private struct FilmPackagingImageView: View {
-    let film: FilmPreset
-
-    var body: some View {
-        ZStack {
-            if let image = UIImage(named: film.packagingImageName) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                placeholder
-            }
-        }
-        .aspectRatio(1, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(film.swiftColor.opacity(0.35), lineWidth: 1)
-        )
-    }
-
-    private var placeholder: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    film.swiftColor.opacity(0.55),
-                    Color.black.opacity(0.88)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
-            VStack(spacing: 5) {
-                Image(systemName: "photo")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.88))
-
-                Text(film.name)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.white)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.72)
-                    .padding(.horizontal, 5)
-            }
-        }
+private extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
     }
 }
 
-private struct Triangle: Shape {
+private struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+
     func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
-        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
-        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
-        path.closeSubpath()
-        return path
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: corners,
+            cornerRadii: CGSize(width: radius, height: radius)
+        )
+        return Path(path.cgPath)
     }
 }
 
@@ -258,15 +195,19 @@ private struct Triangle: Shape {
             Spacer()
         }
 
-        FilmSelectorView(
-            selectedFilm: $selectedFilm,
-            isPresented: $isPresented,
-            onFilmSelected: { film in
-                print("Selected: \(film.name)")
-            }
-        )
-        .frame(maxHeight: .infinity, alignment: .top)
-        .ignoresSafeArea(edges: .top)
+        // 胶片选择弹窗
+        VStack {
+            Spacer()
+
+            FilmSelectorView(
+                selectedFilm: $selectedFilm,
+                isPresented: $isPresented,
+                onFilmSelected: { film in
+                    print("Selected: \(film.name)")
+                }
+            )
+        }
+        .ignoresSafeArea()
     }
     .preferredColorScheme(.dark)
 }

@@ -13,7 +13,6 @@ struct FilmPreset: Identifiable, Equatable, Hashable {
     let minZone: Int
     let maxZone: Int
     let iso: Int
-    let packagingImageName: String
 
     init(
         id: UUID = UUID(),
@@ -23,8 +22,7 @@ struct FilmPreset: Identifiable, Equatable, Hashable {
         description: String,
         minZone: Int,
         maxZone: Int,
-        iso: Int,
-        packagingImageName: String
+        iso: Int
     ) {
         self.id = id
         self.name = name
@@ -34,7 +32,6 @@ struct FilmPreset: Identifiable, Equatable, Hashable {
         self.minZone = minZone
         self.maxZone = maxZone
         self.iso = iso
-        self.packagingImageName = packagingImageName
     }
 
     // MARK: - Swift Color
@@ -42,10 +39,6 @@ struct FilmPreset: Identifiable, Equatable, Hashable {
     /// 将颜色字符串转换为 SwiftUI Color
     var swiftColor: Color {
         Color(hex: color) ?? .blue
-    }
-
-    var localizedDescription: String {
-        NSLocalizedString(description, comment: "")
     }
 
     // MARK: - Equatable
@@ -68,13 +61,8 @@ extension FilmPreset {
     /// 所有可用的胶片预设
     static let allPresets: [FilmPreset] = [
         .velvia50,
-        .velvia100,
         .provia100F,
-        .ektachrome,
-        .portra160,
-        .portra400,
-        .gold200,
-        .ultramax400
+        .ektachrome
     ]
 
     /// Velvia 50 反转片
@@ -83,24 +71,10 @@ extension FilmPreset {
         name: "Velvia 50",
         color: "#007AFF",
         zoneRange: "Zone IV-VIII",
-        description: "film.velvia50.description",
+        description: "高饱和度，色彩鲜艳",
         minZone: 4,
         maxZone: 8,
-        iso: 50,
-        packagingImageName: "film_pack_velvia_50"
-    )
-
-    /// Velvia 100 反转片
-    /// 高饱和度、反差较高，宽容度较窄
-    static let velvia100 = FilmPreset(
-        name: "Velvia 100",
-        color: "#0A84FF",
-        zoneRange: "Zone IV-VIII",
-        description: "film.velvia100.description",
-        minZone: 4,
-        maxZone: 8,
-        iso: 100,
-        packagingImageName: "film_pack_velvia_100"
+        iso: 50
     )
 
     /// Provia 100F 反转片
@@ -109,11 +83,10 @@ extension FilmPreset {
         name: "Provia 100F",
         color: "#5856D6",
         zoneRange: "Zone III-VIII",
-        description: "film.provia100f.description",
+        description: "中性色彩，平衡性好",
         minZone: 3,
         maxZone: 8,
-        iso: 100,
-        packagingImageName: "film_pack_provia_100f"
+        iso: 100
     )
 
     /// Ektachrome 反转片
@@ -122,63 +95,10 @@ extension FilmPreset {
         name: "Ektachrome",
         color: "#FF9500",
         zoneRange: "Zone III-VII",
-        description: "film.ektachrome.description",
+        description: "暖色调，适合人像",
         minZone: 3,
         maxZone: 7,
-        iso: 100,
-        packagingImageName: "film_pack_ektachrome"
-    )
-
-    /// Portra 160 彩色负片
-    /// 肤色表现稳定，高光宽容度较好
-    static let portra160 = FilmPreset(
-        name: "Portra 160",
-        color: "#D6A15D",
-        zoneRange: "Zone II-IX",
-        description: "film.portra160.description",
-        minZone: 2,
-        maxZone: 9,
-        iso: 160,
-        packagingImageName: "film_pack_portra_160"
-    )
-
-    /// Portra 400 彩色负片
-    /// 通用人像负片，高光宽容度较好
-    static let portra400 = FilmPreset(
-        name: "Portra 400",
-        color: "#C98942",
-        zoneRange: "Zone II-IX",
-        description: "film.portra400.description",
-        minZone: 2,
-        maxZone: 9,
-        iso: 400,
-        packagingImageName: "film_pack_portra_400"
-    )
-
-    /// Gold 200 彩色负片
-    /// 日常彩色负片，宽容度中等偏宽
-    static let gold200 = FilmPreset(
-        name: "Gold 200",
-        color: "#F5C542",
-        zoneRange: "Zone II-VIII",
-        description: "film.gold200.description",
-        minZone: 2,
-        maxZone: 8,
-        iso: 200,
-        packagingImageName: "film_pack_gold_200"
-    )
-
-    /// Ultramax 400 彩色负片
-    /// 日常高感彩色负片，宽容度中等偏宽
-    static let ultramax400 = FilmPreset(
-        name: "Ultramax 400",
-        color: "#E85D2A",
-        zoneRange: "Zone II-VIII",
-        description: "film.ultramax400.description",
-        minZone: 2,
-        maxZone: 8,
-        iso: 400,
-        packagingImageName: "film_pack_ultramax_400"
+        iso: 100
     )
 }
 
